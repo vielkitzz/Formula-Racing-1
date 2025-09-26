@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Formula Racing 1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;900&family=Roboto:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-main: #15141f;
+        --bg-panel: #1e1e2b;
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --accent-red: #e00601;
+        --accent-green: #00e051;
+        --border-color: #334155;
+        --main-font: 'Exo 2', sans-serif;
+      }
+      body {
+        font-family: var(--main-font);
+        background-color: var(--bg-main);
+        color: var(--text-primary);
+        background-image: radial-gradient(circle at top right, rgba(224, 6, 1, 0.1), transparent 40%),
+                          radial-gradient(circle at bottom left, rgba(0, 224, 81, 0.1), transparent 40%);
+        background-attachment: fixed;
+      }
+      /* Custom scrollbar for a more modern look */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.5s ease-out forwards;
+      }
+      
+      /* Confetti animation styles for the podium screen */
+      .confetti {
+        width: 15px;
+        height: 15px;
+        background-color: #f00;
+        position: absolute;
+        left: 50%;
+        animation: confetti-fall 4s ease-out infinite;
+        opacity: 0;
+      }
+      .confetti:nth-child(1) { background-color: #fde047; animation-delay: 0s; }
+      .confetti:nth-child(2) { background-color: #00e051; animation-delay: -0.4s; }
+      .confetti:nth-child(3) { background-color: #3b82f6; animation-delay: -0.8s; }
+      .confetti:nth-child(4) { background-color: #e00601; animation-delay: -1.2s; }
+      .confetti:nth-child(5) { background-color: #ffffff; animation-delay: -1.6s; }
+      .confetti:nth-child(6) { background-color: #fde047; animation-delay: -2s; }
+      .confetti:nth-child(7) { background-color: #00e051; animation-delay: -2.4s; }
+      .confetti:nth-child(8) { background-color: #3b82f6; animation-delay: -2.8s; }
+      .confetti:nth-child(9) { background-color: #a855f7; animation-delay: -0.2s; }
+      .confetti:nth-child(10) { background-color: #ec4899; animation-delay: -0.6s; }
+      .confetti:nth-child(11) { background-color: #f97316; animation-delay: -1s; }
+      .confetti:nth-child(12) { background-color: #84cc16; animation-delay: -1.4s; }
+      .confetti:nth-child(13) { background-color: #14b8a6; animation-delay: -1.8s; }
+      .confetti:nth-child(14) { background-color: #fde047; animation-delay: -2.2s; }
+      .confetti:nth-child(15) { background-color: #ffffff; animation-delay: -2.6s; }
+      .confetti:nth-child(16) { background-color: #e00601; animation-delay: -3s; }
+      
+      @keyframes confetti-fall {
+        0% { transform: translateX(-50%) translateY(-10vh) rotateZ(0); opacity: 1; }
+        100% { transform: translateX(calc(-50% + (var(--random-end-x) - 0.5) * 200vw)) translateY(110vh) rotateZ(1080deg); opacity: 0; }
+      }
+      .confetti:nth-child(1) { --random-end-x: 0.1; }
+      .confetti:nth-child(2) { --random-end-x: 0.2; }
+      .confetti:nth-child(3) { --random-end-x: 0.3; }
+      .confetti:nth-child(4) { --random-end-x: 0.4; }
+      .confetti:nth-child(5) { --random-end-x: 0.6; }
+      .confetti:nth-child(6) { --random-end-x: 0.7; }
+      .confetti:nth-child(7) { --random-end-x: 0.8; }
+      .confetti:nth-child(8) { --random-end-x: 0.9; }
+      .confetti:nth-child(9) { --random-end-x: 0.15; }
+      .confetti:nth-child(10) { --random-end-x: 0.25; }
+      .confetti:nth-child(11) { --random-end-x: 0.35; }
+      .confetti:nth-child(12) { --random-end-x: 0.45; }
+      .confetti:nth-child(13) { --random-end-x: 0.55; }
+      .confetti:nth-child(14) { --random-end-x: 0.65; }
+      .confetti:nth-child(15) { --random-end-x: 0.75; }
+      .confetti:nth-child(16) { --random-end-x: 0.85; }
+
+      /* Podium Animation */
+      @keyframes podium-pop-in {
+        0% { transform: translateY(50px) scale(0.8); opacity: 0; }
+        60% { transform: translateY(-10px) scale(1.05); opacity: 1; }
+        80% { transform: translateY(5px) scale(0.98); }
+        100% { transform: translateY(0) scale(1); opacity: 1; }
+      }
+      .animate-podium-pop-in {
+        animation: podium-pop-in 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+      }
+
+      /* Race Flag Animations */
+      @keyframes slide-down {
+        from { transform: translateY(-100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes fade-out {
+        from { opacity: 1; transform: translateY(0); }
+        to { opacity: 0; transform: translateY(-100%); }
+      }
+
+      .flag-overlay {
+        animation: slide-down 0.5s ease-out forwards;
+      }
+
+      .flag-overlay.hiding {
+        animation: fade-out 0.5s ease-in forwards;
+      }
+
+      @keyframes pulse-bg {
+        0% { background-color: rgba(234, 179, 8, 0.9); } /* yellow-400/90 */
+        50% { background-color: rgba(234, 179, 8, 0.7); } /* yellow-400/70 */
+        100% { background-color: rgba(234, 179, 8, 0.9); }
+      }
+
+      .yellow-flag-pulse {
+        animation: pulse-bg 1s infinite;
+      }
+
+      /* Pole Position Animation */
+      @keyframes pole-glow {
+        0%, 100% {
+          box-shadow: 0 0 10px #fde047, 0 0 20px #fde047;
+          border-color: #fde047;
+        }
+        50% {
+          box-shadow: 0 0 15px #fde047, 0 0 30px #fde047;
+          border-color: #fff;
+        }
+      }
+      .pole-position-card {
+        animation: pole-glow 2.5s infinite ease-in-out;
+      }
+
+      /* F1 2010-2014 Skin styles */
+      .skin-f1-2010-2014-active {
+        --bg-panel: transparent; /* Allow gradient to show */
+      }
+      .skin-f1-2010-2014-active .rounded-2xl,
+      .skin-f1-2010-2014-active .bg-\[\#1e1e2b\]\/80,
+      .skin-f1-2010-2014-active .bg-slate-500\/10
+      {
+          border-radius: 2px !important;
+          border-width: 1px;
+          border-color: #666 #222 #222 #666;
+          background-image: linear-gradient(to bottom, #4e4e4e, #2e2e2e);
+          background-color: transparent;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+          backdrop-filter: blur(0px) !important;
+      }
+      .skin-f1-2010-2014-active .rounded-lg {
+          border-radius: 2px !important;
+      }
+      .skin-f1-2010-2014-active .rounded-full {
+          border-radius: 4px !important;
+      }
+      .skin-f1-2010-2014-active button,
+      .skin-f1-2010-2014-active select {
+          border-radius: 2px !important;
+      }
+      .skin-f1-2010-2014-active button:not([class*="bg-transparent"]):not([class*="p-1.5"]):not([class*="p-2"]) {
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 1px 1px rgba(0,0,0,0.4);
+          border-top: 1px solid rgba(255,255,255,0.1);
+          border-bottom: 1px solid rgba(0,0,0,0.4);
+          border-left: 1px solid rgba(0,0,0,0.2);
+          border-right: 1px solid rgba(0,0,0,0.2);
+          text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.20.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "recharts": "https://aistudiocdn.com/recharts@^2.12.7",
+    "recharts/": "https://aistudiocdn.com/recharts@^2.12.7/",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.1"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

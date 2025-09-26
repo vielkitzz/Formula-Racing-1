@@ -1,0 +1,5 @@
+{
+  "name": "Formula Racing 1",
+  "description": "An application that allows users to simulate a Formula Racing season. Configure settings like the year and scoring system, then simulate races one by one to see who becomes champion. Race outcomes are dynamically generated based on driver and team statistics.",
+  "requestFramePermissions": []
+}

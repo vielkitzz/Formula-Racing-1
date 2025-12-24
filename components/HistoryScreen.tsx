@@ -1,17 +1,20 @@
+
 import React, { useState } from 'react';
-import { SeasonHistory, Driver, Team, Race, RaceResult, QualifyingResult, SeasonSettings } from '../types';
+import { SeasonHistory, Driver, Team, Race, RaceResult, QualifyingResult, SeasonSettings, Country } from '../types';
 import { useI18n } from '../i18n';
 import TrophyIcon from './icons/TrophyIcon';
 import ImageWithFallback from './ImageWithFallback';
-import { getInitials, getCountryFlagUrl } from '../utils';
+import { getInitials } from '../utils';
 import RaceResultModal from './RaceResultModal';
 import StandingsTable from './StandingsTable';
+import CountryFlag from './CountryFlag';
 
 interface HistoryScreenProps {
     history: SeasonHistory[];
+    customCountries?: Country[];
 }
 
-const HistoryScreen: React.FC<HistoryScreenProps> = ({ history }) => {
+const HistoryScreen: React.FC<HistoryScreenProps> = ({ history, customCountries = [] }) => {
     const { t } = useI18n();
     const [selectedYear, setSelectedYear] = useState<number | null>(history.length > 0 ? history[0].year : null);
     const [modalData, setModalData] = useState<{ race: Race, results: RaceResult[], quali: QualifyingResult[] } | null>(null);
@@ -51,6 +54,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ history }) => {
                 drivers={selectedSeason?.drivers || []}
                 teams={selectedSeason?.teams || []}
                 settings={selectedSeason?.settings || fallbackSettings}
+                customCountries={customCountries}
             />
              {history.length === 0 ? (
                     <p className="text-center text-slate-400 py-20">{t('history_noHistory')}</p>
@@ -93,8 +97,8 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ history }) => {
                                 </div>
                                 {activeTab === 'standings' && (
                                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in">
-                                        <StandingsTable title={t('driversChampionship')} standings={selectedSeason.driverStandings} type="driver" seasonOver={true} drivers={selectedSeason.drivers} teams={selectedSeason.teams} onRowClick={() => {}} />
-                                        <StandingsTable title={t('constructorsChampionship')} standings={selectedSeason.constructorStandings} type="constructor" seasonOver={true} drivers={selectedSeason.drivers} teams={selectedSeason.teams} onRowClick={() => {}} />
+                                        <StandingsTable title={t('driversChampionship')} standings={selectedSeason.driverStandings} type="driver" seasonOver={true} drivers={selectedSeason.drivers} teams={selectedSeason.teams} customCountries={customCountries} onRowClick={() => {}} />
+                                        <StandingsTable title={t('constructorsChampionship')} standings={selectedSeason.constructorStandings} type="constructor" seasonOver={true} drivers={selectedSeason.drivers} teams={selectedSeason.teams} customCountries={customCountries} onRowClick={() => {}} />
                                     </div>
                                 )}
                                 {activeTab === 'calendar' && (
@@ -116,7 +120,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ history }) => {
                                                 <div key={index} className="bg-slate-500/10 p-4 rounded-lg">
                                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                                                         <p className="font-semibold text-slate-200 flex items-center gap-2 mb-2 sm:mb-0">
-                                                            <img src={getCountryFlagUrl(race.countryCode)} alt={race.country} className="w-6 h-auto rounded-sm" />
+                                                            <CountryFlag countryCode={race.countryCode} customCountries={customCountries} className="w-6 h-auto rounded-sm" />
                                                             <span>{index + 1}. {race.name}</span>
                                                         </p>
                                                         <button onClick={() => handleViewResults(index)} className="px-4 py-1 bg-[#00e051] text-black font-bold text-sm rounded-md hover:bg-opacity-90 self-end sm:self-center">{t('history_viewResults')}</button>

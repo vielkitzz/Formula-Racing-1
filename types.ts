@@ -1,3 +1,4 @@
+
 // FIX: Import TranslationKey for type safety with i18n keys.
 import { TranslationKey } from './i18n';
 
@@ -10,6 +11,13 @@ export enum AppState {
     LoadGame,
     RegulationChanges,
     TeamOwnerSetup,
+}
+
+export interface Country {
+    code: string;
+    name: string;
+    isCustom?: boolean;
+    flagUrl?: string; // Base64 for custom countries
 }
 
 export interface Driver {
@@ -222,6 +230,7 @@ export interface SaveData {
     engineSuppliers: EngineSupplier[];
     news: NewsArticle[];
     skin: AppSkin;
+    customCountries?: Country[];
 }
 
 export interface RegulationChangeProposal {

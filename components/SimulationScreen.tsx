@@ -1,8 +1,8 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { SeasonSettings, Race, DriverStanding, ConstructorStanding, RaceResult, Driver, Team, QualifyingResult, RaceState, TyreCompound, WeatherCondition, NewsArticle, QualifyingData, SeasonHistory, EngineSupplier } from '../types';
+import { SeasonSettings, Race, DriverStanding, ConstructorStanding, RaceResult, Driver, Team, QualifyingResult, RaceState, TyreCompound, WeatherCondition, NewsArticle, QualifyingData, SeasonHistory, EngineSupplier, Country } from '../types';
 import StandingsTable from './StandingsTable';
 import RaceResultModal from './RaceResultModal';
-import { getCountryFlagUrl } from '../utils';
 import LiveRaceView from './LiveRaceView';
 import PreRaceStrategyScreen from './PreRaceStrategyScreen';
 import StopwatchIcon from './icons/StopwatchIcon';
@@ -22,6 +22,7 @@ import ForwardIcon from './icons/ForwardIcon';
 import HistoryScreen from './HistoryScreen';
 import TeamManagementPanel from './TeamManagementPanel';
 import UserIcon from './icons/UserIcon';
+import CountryFlag from './CountryFlag';
 
 
 const NewsPanel: React.FC<{ news: NewsArticle[], drivers: Driver[], teams: Team[] }> = ({ news, drivers, teams }) => {
@@ -128,6 +129,7 @@ interface SimulationScreenProps {
   drivers: Driver[];
   teams: Team[];
   engineSuppliers: EngineSupplier[];
+  customCountries: Country[];
   setTeams: React.Dispatch<React.SetStateAction<Team[]>>;
   driverStandings: DriverStanding[];
   constructorStandings: ConstructorStanding[];
@@ -167,6 +169,7 @@ const SimulationScreen: React.FC<SimulationScreenProps> = ({
   drivers,
   teams,
   engineSuppliers,
+  customCountries,
   setTeams,
   driverStandings,
   constructorStandings,
@@ -306,8 +309,8 @@ const SimulationScreen: React.FC<SimulationScreenProps> = ({
             </div>
             {activeView === 'standings' ? (
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <StandingsTable title={t('driversChampionship')} standings={driverStandings} type="driver" seasonOver={seasonOver} drivers={drivers} teams={teams} onRowClick={handleOpenProfile} />
-                  <StandingsTable title={t('constructorsChampionship')} standings={constructorStandings} type="constructor" seasonOver={seasonOver} drivers={drivers} teams={teams} onRowClick={handleOpenProfile} />
+                  <StandingsTable title={t('driversChampionship')} standings={driverStandings} type="driver" seasonOver={seasonOver} drivers={drivers} teams={teams} customCountries={customCountries} onRowClick={handleOpenProfile} />
+                  <StandingsTable title={t('constructorsChampionship')} standings={constructorStandings} type="constructor" seasonOver={seasonOver} drivers={drivers} teams={teams} customCountries={customCountries} onRowClick={handleOpenProfile} />
                 </div>
             ) : activeView === 'myTeam' && isOwnerMode && playerTeam ? (
                 <TeamManagementPanel 
@@ -328,9 +331,10 @@ const SimulationScreen: React.FC<SimulationScreenProps> = ({
                     settings={settings}
                     calendar={calendar}
                     driverStandings={driverStandings}
+                    customCountries={customCountries}
                 />
             ) : activeView === 'history' ? (
-                <HistoryScreen history={history} />
+                <HistoryScreen history={history} customCountries={customCountries} />
             ) : null}
         </>
       )
@@ -362,7 +366,7 @@ const SimulationScreen: React.FC<SimulationScreenProps> = ({
 
     switch(activeContentKey) {
         case 'race':
-            if (raceState) return <LiveRaceView race={currentRace} raceState={raceState} drivers={drivers} teams={teams} commentary={commentary} isPaused={isPaused} settings={settings} />;
+            if (raceState) return <LiveRaceView race={currentRace} raceState={raceState} drivers={drivers} teams={teams} commentary={commentary} isPaused={isPaused} settings={settings} customCountries={customCountries} />;
             return null;
         case 'pre-race':
             return <PreRaceStrategyScreen
@@ -399,6 +403,7 @@ const SimulationScreen: React.FC<SimulationScreenProps> = ({
           drivers={drivers}
           teams={teams}
           settings={settings}
+          customCountries={customCountries}
         />
       )}
       
@@ -412,6 +417,7 @@ const SimulationScreen: React.FC<SimulationScreenProps> = ({
           onSelectProfile={handleOpenProfile}
           allRaceResults={allRaceResults}
           allQualifyingResults={allQualifyingResults}
+          customCountries={customCountries}
       />
 
       <div className="p-6 bg-[#1e1e2b]/80 border border-slate-700 rounded-2xl backdrop-blur-sm shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -425,7 +431,7 @@ const SimulationScreen: React.FC<SimulationScreenProps> = ({
             </p>
            {currentRace && !seasonOver && (
              <div className="flex items-center gap-2 text-slate-400 mt-1">
-               <img src={getCountryFlagUrl(currentRace.countryCode)} alt={currentRace.country} className="w-5 h-auto rounded-sm" />
+               <CountryFlag countryCode={currentRace.countryCode} customCountries={customCountries} className="w-5 h-auto rounded-sm" />
                <span>{t('raceInfo', { round: currentRaceIndex + 1, total: calendar.length, country: currentRace.country })}</span>
              </div>
            )}

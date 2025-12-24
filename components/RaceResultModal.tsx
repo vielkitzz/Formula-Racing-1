@@ -1,11 +1,13 @@
+
 import React from 'react';
-import { RaceResult, Race, Driver, Team, QualifyingResult, SeasonSettings } from '../types';
+import { RaceResult, Race, Driver, Team, QualifyingResult, SeasonSettings, Country } from '../types';
 import { getCountryFlagUrl, getInitials } from '../utils';
 import CloseIcon from './icons/CloseIcon';
 import StopwatchIcon from './icons/StopwatchIcon';
 import { useI18n } from '../i18n';
 import ImageWithFallback from './ImageWithFallback';
 import { SCORING_SYSTEMS } from '../constants';
+import CountryFlag from './CountryFlag';
 
 interface RaceResultModalProps {
   isOpen: boolean;
@@ -16,9 +18,10 @@ interface RaceResultModalProps {
   drivers: Driver[];
   teams: Team[];
   settings: SeasonSettings;
+  customCountries?: Country[];
 }
 
-const RaceResultModal: React.FC<RaceResultModalProps> = ({ isOpen, onClose, raceResults, qualifyingResults, race, drivers, teams, settings }) => {
+const RaceResultModal: React.FC<RaceResultModalProps> = ({ isOpen, onClose, raceResults, qualifyingResults, race, drivers, teams, settings, customCountries = [] }) => {
   const { t } = useI18n();
   if (!isOpen) return null;
 
@@ -67,7 +70,7 @@ const RaceResultModal: React.FC<RaceResultModalProps> = ({ isOpen, onClose, race
       >
         <div className="sticky top-0 bg-[#1e1e2b]/80 backdrop-blur-sm z-10 p-6 border-b border-slate-700 flex justify-between items-center">
           <h2 className="text-2xl font-bold text-slate-200 flex items-center gap-3">
-            <img src={getCountryFlagUrl(race.countryCode)} alt={race.country} className="w-8 h-auto rounded-sm" />
+            <CountryFlag countryCode={race.countryCode} customCountries={customCountries} className="w-8 h-auto rounded-sm" />
             <span>{t('resultsFor', { raceName: race.name })}</span>
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white">

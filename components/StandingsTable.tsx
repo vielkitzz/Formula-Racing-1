@@ -1,9 +1,11 @@
+
 import React from 'react';
-import { DriverStanding, ConstructorStanding, Driver, Team } from '../types';
+import { DriverStanding, ConstructorStanding, Driver, Team, Country } from '../types';
 import TrophyIcon from './icons/TrophyIcon';
-import { getCountryByCode, getCountryFlagUrl, getInitials } from '../utils';
+import { getCountryByCode, getInitials } from '../utils';
 import { useI18n } from '../i18n';
 import ImageWithFallback from './ImageWithFallback';
+import CountryFlag from './CountryFlag';
 
 interface StandingsTableProps {
   title: string;
@@ -12,10 +14,11 @@ interface StandingsTableProps {
   seasonOver: boolean;
   drivers: Driver[];
   teams: Team[];
+  customCountries?: Country[];
   onRowClick: (id: number, type: 'driver' | 'constructor') => void;
 }
 
-const StandingsTable: React.FC<StandingsTableProps> = ({ title, standings, type, seasonOver, drivers, teams, onRowClick }) => {
+const StandingsTable: React.FC<StandingsTableProps> = ({ title, standings, type, seasonOver, drivers, teams, customCountries = [], onRowClick }) => {
   const { t } = useI18n();
   const isDriver = type === 'driver';
 
@@ -89,8 +92,9 @@ const StandingsTable: React.FC<StandingsTableProps> = ({ title, standings, type,
                     <div>
                       <div className="font-semibold flex items-center gap-2">
                          {nationalityCode && (
-                          <img 
-                            src={getCountryFlagUrl(nationalityCode)} 
+                          <CountryFlag 
+                            countryCode={nationalityCode}
+                            customCountries={customCountries}
                             alt={getCountryByCode(nationalityCode)?.name} 
                             title={getCountryByCode(nationalityCode)?.name}
                             className="w-5 h-auto rounded-sm"

@@ -1,5 +1,6 @@
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { AppState, SeasonSettings, RaceResult, DriverStanding, ConstructorStanding, Race, Team, Driver, QualifyingResult, RaceState, TyreCompound, LiveDriverState, EngineSupplier, SaveData, WeatherCondition, NewsArticle, AppSkin, QualifyingData, RegulationChangeProposal, SeasonHistory, IncidentType, Incident } from './types';
+import { AppState, SeasonSettings, RaceResult, DriverStanding, ConstructorStanding, Race, Team, Driver, QualifyingResult, RaceState, TyreCompound, LiveDriverState, EngineSupplier, SaveData, WeatherCondition, NewsArticle, AppSkin, QualifyingData, RegulationChangeProposal, SeasonHistory, IncidentType, Incident, Country } from './types';
 import { DRIVERS, TEAMS, CALENDAR, SCORING_SYSTEMS, TYRE_COMPOUNDS, ENGINE_SUPPLIERS, DEFAULT_SKIN, DEFAULT_SKINS, PRIZE_MONEY } from './constants';
 import MainMenu from './components/MainMenu';
 import SettingsScreen from './components/SettingsScreen';
@@ -11,7 +12,7 @@ import { shouldDriverPit, chooseNextTyre } from './strategyEngine';
 import { useI18n } from './i18n';
 import SettingsPanel from './components/SettingsPanel';
 import Cog8ToothIcon from './components/icons/Cog8ToothIcon';
-import { getSavedSkins } from './storage';
+import { getSavedSkins, getCustomCountries, saveCustomCountries } from './storage';
 import { getSavedSimulations, saveSimulation, deleteSimulation, getSeasonHistory, saveSeasonToHistory } from './storage';
 import SavedSimulationsScreen from './components/SavedSimulationsScreen';
 import { generateRegulationProposals } from './regulationChanges';
@@ -46,19 +47,20 @@ const App: React.FC = () => {
     
     const simulationIntervalRef = useRef<number | null>(null);
     const lastCommentaryLapRef = useRef<number>(0);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Editable data
     const [drivers, setDrivers] = useState<Driver[]>(DRIVERS);
     const [teams, setTeams] = useState<Team[]>(TEAMS);
     const [calendar, setCalendar] = useState<Race[]>(CALENDAR);
     const [engineSuppliers, setEngineSuppliers] = useState<EngineSupplier[]>(ENGINE_SUPPLIERS);
+    const [customCountries, setCustomCountries] = useState<Country[]>([]);
     const [skin, setSkin] = useState<AppSkin>(DEFAULT_SKIN);
     const [userSkins, setUserSkins] = useState<AppSkin[]>(getSavedSkins());
     
     // Global Settings
     const { t, language, setLanguage } = useI18n();
     const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
+    const [hidePotential, setHidePotential] = useState(false);
     
     // Save/Load & History
     const [savedSimulations, setSavedSimulations] = useState<SaveData[]>([]);
@@ -67,6 +69,7 @@ const App: React.FC = () => {
     useEffect(() => {
         setSavedSimulations(getSavedSimulations());
         setSeasonHistory(getSeasonHistory());
+        setCustomCountries(getCustomCountries());
     }, []);
 
     useEffect(() => {
@@ -86,6 +89,22 @@ const App: React.FC = () => {
 
     }, [skin]);
 
+    const handleCustomCountriesChange = (newCountries: Country[]) => {
+        setCustomCountries(newCountries);
+        saveCustomCountries(newCountries);
+    };
+
+    const randomizeAllDriverPotentials = () => {
+        setDrivers(prevDrivers =>
+            prevDrivers.map(driver => ({
+                ...driver,
+                // Skewed distribution: average around 6.5, min 1, max 10
+                potential: parseFloat(
+                    (Math.min(10.0, Math.max(1.0, 6.5 + (Math.random() - 0.5) * 7))).toFixed(1)
+                )
+            }))
+        );
+    };
 
     const startNewSeason = (newSettings: SeasonSettings) => {
         const proposals = generateRegulationProposals();
@@ -134,22 +153,34 @@ const App: React.FC = () => {
     const progressDrivers = useCallback((currentDrivers: Driver[], finalDriverStandings: DriverStanding[], totalRaces: number): Driver[] => {
         const PEAK_AGE_START = 28;
         const PEAK_AGE_END = 32;
-
+    
         return currentDrivers.map(driver => {
             const newAge = driver.age + 1;
             const standing = finalDriverStandings.find(s => s.driverId === driver.id);
             const totalPoints = standing ? standing.points : 0;
             const avgPoints = totalRaces > 0 ? totalPoints / totalRaces : 0;
             const performanceFactor = Math.max(-1, Math.min(1.5, (avgPoints - 8) / 10));
-
+    
             let newDriver = { ...driver, age: newAge, contractEndsYear: driver.contractEndsYear - 1 };
+    
+            // Evolve Potential first
+            let currentPotential = driver.potential;
+            if (newAge > 33) { // Potential starts to decline for older drivers
+                currentPotential -= (0.05 + (Math.random() * 0.05)); // Slight random decline
+            } else if (newAge < 25 && performanceFactor > 0.8) { // Exceptional performance for young driver
+                currentPotential += (0.05 + (Math.random() * 0.05)); // Slight random increase
+            }
+            newDriver.potential = parseFloat(Math.max(1, Math.min(10, currentPotential)).toFixed(1));
+    
+    
             const attributesToUpdate: (keyof Driver)[] = ['startSkill', 'concentration', 'overtaking', 'experience', 'speed', 'rainSkill', 'setupSkill', 'physical'];
-
+    
             attributesToUpdate.forEach(attr => {
                 let currentVal = newDriver[attr] as number;
                 
                 if (newAge < PEAK_AGE_START) {
-                    const gapToPotential = driver.potential - currentVal;
+                    // Use the NEWLY calculated potential as the target
+                    const gapToPotential = newDriver.potential - currentVal;
                     if (gapToPotential > 0) {
                         const ageFactor = 1 - (newAge / (PEAK_AGE_START + 5));
                         let improvement = gapToPotential * (0.1 + (performanceFactor * 0.1)) * ageFactor;
@@ -165,10 +196,10 @@ const App: React.FC = () => {
                      let change = performanceFactor * 0.2;
                      currentVal += change;
                 }
-
+    
                 (newDriver as any)[attr] = parseFloat(Math.max(1, Math.min(10, currentVal)).toFixed(2));
             });
-
+    
             return newDriver;
         });
     }, []);
@@ -260,6 +291,7 @@ const App: React.FC = () => {
                 engineSuppliers,
                 news,
                 skin,
+                customCountries,
             };
             
             saveSimulation(saveData);
@@ -271,7 +303,7 @@ const App: React.FC = () => {
             const errorMessage = error instanceof Error ? error.message : t('unknownError');
             alert(t('saveError_generic', { error: errorMessage }));
         }
-    }, [settings, currentRaceIndex, allRaceResults, allQualifyingResults, driverStandings, constructorStandings, drivers, teams, calendar, engineSuppliers, news, skin, t]);
+    }, [settings, currentRaceIndex, allRaceResults, allQualifyingResults, driverStandings, constructorStandings, drivers, teams, calendar, engineSuppliers, news, skin, customCountries, t]);
     
     const loadStateFromSave = (saveData: SaveData) => {
         if (!saveData.settings || !saveData.drivers || !saveData.calendar || !saveData.teams) {
@@ -290,6 +322,7 @@ const App: React.FC = () => {
         setEngineSuppliers(saveData.engineSuppliers || ENGINE_SUPPLIERS);
         setNews(saveData.news || []);
         setSkin(saveData.skin || DEFAULT_SKIN);
+        setCustomCountries(saveData.customCountries || []);
         
         setError(null);
         setSimulationStatus('idle');
@@ -821,7 +854,22 @@ const App: React.FC = () => {
             case AppState.Settings:
                 return <SettingsScreen settings={settings} onStartSeason={startNewSeason} onBackToMenu={() => setAppState(AppState.MainMenu)} />;
             case AppState.Edit:
-                return <EditMenu drivers={drivers} teams={teams} calendar={calendar} engineSuppliers={engineSuppliers} setDrivers={setDrivers} setTeams={setTeams} setCalendar={setCalendar} setEngineSuppliers={setEngineSuppliers} onBackToMenu={() => setAppState(AppState.MainMenu)} />;
+                return <EditMenu 
+                    drivers={drivers} 
+                    teams={teams} 
+                    calendar={calendar} 
+                    engineSuppliers={engineSuppliers}
+                    customCountries={customCountries}
+                    setDrivers={setDrivers} 
+                    setTeams={setTeams} 
+                    setCalendar={setCalendar} 
+                    setEngineSuppliers={setEngineSuppliers} 
+                    setCustomCountries={handleCustomCountriesChange}
+                    onBackToMenu={() => setAppState(AppState.MainMenu)} 
+                    hidePotential={hidePotential} 
+                    setHidePotential={setHidePotential} 
+                    onRandomizeAllPotentials={randomizeAllDriverPotentials} 
+                />;
             case AppState.LoadGame:
                 return <SavedSimulationsScreen simulations={savedSimulations} onLoad={handleLoadSimulation} onDelete={handleDeleteSimulation} onBackToMenu={() => setAppState(AppState.MainMenu)} />;
             case AppState.TeamOwnerSetup:
@@ -834,7 +882,23 @@ const App: React.FC = () => {
                     onConfirm={handleConfirmRegulations}
                 />;
             case AppState.OffSeason:
-                 return <EditMenu drivers={drivers} teams={teams} calendar={calendar} engineSuppliers={engineSuppliers} setDrivers={setDrivers} setTeams={setTeams} setCalendar={setCalendar} setEngineSuppliers={setEngineSuppliers} onBackToMenu={handleStartNextSeason} isOffSeason={true} />;
+                 return <EditMenu 
+                    drivers={drivers} 
+                    teams={teams} 
+                    calendar={calendar} 
+                    engineSuppliers={engineSuppliers}
+                    customCountries={customCountries}
+                    setDrivers={setDrivers} 
+                    setTeams={setTeams} 
+                    setCalendar={setCalendar} 
+                    setEngineSuppliers={setEngineSuppliers}
+                    setCustomCountries={handleCustomCountriesChange}
+                    onBackToMenu={handleStartNextSeason} 
+                    isOffSeason={true} 
+                    hidePotential={hidePotential} 
+                    setHidePotential={setHidePotential} 
+                    onRandomizeAllPotentials={randomizeAllDriverPotentials} 
+                />;
             case AppState.Simulation:
                 if (!settings) return null;
                 return (
@@ -845,6 +909,7 @@ const App: React.FC = () => {
                         drivers={drivers}
                         teams={teams}
                         engineSuppliers={engineSuppliers}
+                        customCountries={customCountries}
                         setTeams={setTeams}
                         driverStandings={driverStandings}
                         constructorStandings={constructorStandings}
@@ -895,12 +960,6 @@ const App: React.FC = () => {
 
     return (
         <div className="min-h-screen p-4 sm:p-8">
-             <input
-                type="file"
-                ref={fileInputRef}
-                accept=".json,application/json"
-                style={{ display: 'none' }}
-            />
             {isSettingsPanelOpen && (
                 <SettingsPanel
                     isOpen={isSettingsPanelOpen}

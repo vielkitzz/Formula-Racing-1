@@ -1,11 +1,13 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
-import { Driver, Team, RaceResult, QualifyingResult } from '../types';
+import { Driver, Team, RaceResult, QualifyingResult, Country } from '../types';
 import { useI18n } from '../i18n';
-import { getCountryByCode, getCountryFlagUrl, getInitials } from '../utils';
+import { getCountryByCode, getInitials } from '../utils';
 import CloseIcon from './icons/CloseIcon';
 import UserIcon from './icons/UserIcon';
 import StatBar from './StatBar';
 import ImageWithFallback from './ImageWithFallback';
+import CountryFlag from './CountryFlag';
 
 interface ProfileModalProps {
     isOpen: boolean;
@@ -17,6 +19,7 @@ interface ProfileModalProps {
     onSelectProfile: (id: number, type: 'driver' | 'constructor') => void;
     allRaceResults: RaceResult[][];
     allQualifyingResults: QualifyingResult[][];
+    customCountries?: Country[];
 }
 
 const StatBox = ({ label, value }: { label: string, value: string | number }) => (
@@ -26,7 +29,7 @@ const StatBox = ({ label, value }: { label: string, value: string | number }) =>
     </div>
 );
 
-const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileId, profileType, drivers, teams, onSelectProfile, allRaceResults, allQualifyingResults }) => {
+const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileId, profileType, drivers, teams, onSelectProfile, allRaceResults, allQualifyingResults, customCountries = [] }) => {
     const { t } = useI18n();
     const [activeTab, setActiveTab] = useState<'details' | 'stats'>('details');
 
@@ -135,6 +138,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileId,
     const renderDriverProfile = (driver: Driver) => {
         const team = teams.find(t => t.id === driver.teamId);
         const country = getCountryByCode(driver.nationality);
+        // Fallback for custom country name if not found in standard list
+        const customCountry = customCountries.find(c => c.code === driver.nationality);
         
         return (
             <div className="animate-fade-in">
@@ -153,8 +158,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileId,
                          <h2 className="text-3xl font-bold text-slate-200">{driver.name}</h2>
                          <div className="flex items-center justify-center sm:justify-start gap-4 text-slate-400 mt-2">
                              <span className="flex items-center gap-2">
-                                <img src={getCountryFlagUrl(driver.nationality)} alt={country?.name} className="w-5 h-auto rounded-sm" />
-                                {country?.name || driver.nationality}
+                                <CountryFlag countryCode={driver.nationality} customCountries={customCountries} className="w-5 h-auto rounded-sm" />
+                                {customCountry?.name || country?.name || driver.nationality}
                              </span>
                              <span>•</span>
                              <span>{t('age')}: {driver.age}</span>

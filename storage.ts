@@ -1,8 +1,10 @@
-import { SaveData, AppSkin, SeasonHistory } from './types';
+
+import { SaveData, AppSkin, SeasonHistory, Country } from './types';
 
 const STORAGE_KEY = 'formulaRacingSimSaves';
 const SKINS_STORAGE_KEY = 'formulaRacingSkins';
 const HISTORY_STORAGE_KEY = 'formulaRacingSimHistory';
+const COUNTRIES_STORAGE_KEY = 'formulaRacingCustomCountries';
 
 export const getSavedSimulations = (): SaveData[] => {
     try {
@@ -65,6 +67,26 @@ export const saveUserSkins = (skins: AppSkin[]): void => {
         localStorage.setItem(SKINS_STORAGE_KEY, JSON.stringify(userSkins));
     } catch (error) {
         console.error("Failed to save skins:", error);
+    }
+};
+
+export const getCustomCountries = (): Country[] => {
+    try {
+        const savedData = localStorage.getItem(COUNTRIES_STORAGE_KEY);
+        if (savedData) {
+            return JSON.parse(savedData) as Country[];
+        }
+    } catch (error) {
+        console.error("Failed to load custom countries:", error);
+    }
+    return [];
+};
+
+export const saveCustomCountries = (countries: Country[]): void => {
+    try {
+        localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(countries));
+    } catch (error) {
+        console.error("Failed to save custom countries:", error);
     }
 };
 

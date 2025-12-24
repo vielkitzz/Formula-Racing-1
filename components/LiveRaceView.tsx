@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Race, Driver, Team, RaceState, SeasonSettings } from '../types';
+import { Race, Driver, Team, RaceState, SeasonSettings, Country } from '../types';
 import { getCountryFlagUrl, formatTime, getInitials } from '../utils';
 import TyreCompoundIcon from './TyreCompoundIcon';
 import LiveIcon from './icons/LiveIcon';
@@ -19,9 +20,10 @@ interface LiveRaceViewProps {
     commentary: string;
     isPaused: boolean;
     settings: SeasonSettings;
+    customCountries?: Country[];
 }
 
-const LiveRaceView: React.FC<LiveRaceViewProps> = ({ race, raceState, drivers, teams, commentary, isPaused, settings }) => {
+const LiveRaceView: React.FC<LiveRaceViewProps> = ({ race, raceState, drivers, teams, commentary, isPaused, settings, customCountries = [] }) => {
     const { t } = useI18n();
     const [pulse, setPulse] = useState(false);
     const [trackedDriverId, setTrackedDriverId] = useState<number | null>(null);

@@ -1,10 +1,12 @@
+
 // FIX: Import 'useMemo' from 'react' to resolve 'Cannot find name' errors.
 import React, { useState, useMemo } from 'react';
-import { RaceState, Driver, Team, RaceResult, SeasonSettings, Race, QualifyingResult, DriverStanding } from '../types';
+import { RaceState, Driver, Team, RaceResult, SeasonSettings, Race, QualifyingResult, DriverStanding, Country } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useI18n } from '../i18n';
 import { SCORING_SYSTEMS } from '../constants';
-import { getCountryFlagUrl, getCountryByCode } from '../utils';
+import { getCountryByCode } from '../utils';
+import CountryFlag from './CountryFlag';
 
 type ChartType = 'positions' | 'lapTimes' | 'gap' | 'championshipPosition' | 'championshipPoints' | 'seasonOverview';
 
@@ -17,9 +19,10 @@ interface ChartsViewProps {
     settings: SeasonSettings;
     calendar: Race[];
     driverStandings: DriverStanding[];
+    customCountries?: Country[];
 }
 
-const ChartsView: React.FC<ChartsViewProps> = ({ raceHistory, drivers, teams, allRaceResults, allQualifyingResults, settings, calendar, driverStandings }) => {
+const ChartsView: React.FC<ChartsViewProps> = ({ raceHistory, drivers, teams, allRaceResults, allQualifyingResults, settings, calendar, driverStandings, customCountries = [] }) => {
     const { t } = useI18n();
     const [activeChart, setActiveChart] = useState<ChartType>(allRaceResults.length > 0 ? 'seasonOverview' : 'positions');
     
@@ -146,7 +149,9 @@ const ChartsView: React.FC<ChartsViewProps> = ({ raceHistory, drivers, teams, al
                             <th className="p-2 text-left text-sm font-semibold text-slate-400 min-w-[150px]">Driver</th>
                             {races.map((race, index) => (
                                 <th key={index} className="p-1 sm:p-2 text-center text-sm font-semibold text-slate-400" title={race.name}>
-                                    <img src={getCountryFlagUrl(race.countryCode)} alt={race.countryCode} className="w-6 mx-auto mb-1 rounded-sm" />
+                                    <div className="flex justify-center">
+                                        <CountryFlag countryCode={race.countryCode} customCountries={customCountries} className="w-6 mb-1 rounded-sm" />
+                                    </div>
                                     {race.countryCode}
                                 </th>
                             ))}
@@ -164,8 +169,9 @@ const ChartsView: React.FC<ChartsViewProps> = ({ raceHistory, drivers, teams, al
                                 <td className="p-2 font-bold text-center">{index + 1}</td>
                                 <td className="p-2 font-semibold whitespace-nowrap">
                                     <div className="flex items-center gap-2">
-                                        <img 
-                                            src={getCountryFlagUrl(driver.nationality)} 
+                                        <CountryFlag 
+                                            countryCode={driver.nationality}
+                                            customCountries={customCountries}
                                             alt={country?.name} 
                                             title={country?.name}
                                             className="w-5 h-auto rounded-sm"

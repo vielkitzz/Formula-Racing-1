@@ -13,11 +13,9 @@ import { useI18n } from './i18n';
 import SettingsPanel from './components/SettingsPanel';
 import Cog8ToothIcon from './components/icons/Cog8ToothIcon';
 import { getSavedSkins, getCustomCountries, saveCustomCountries } from './storage';
-import { getSavedSimulations, saveSimulation, deleteSimulation, getSeasonHistory, saveSeasonToHistory } from './storage';
-import SavedSimulationsScreen from './components/SavedSimulationsScreen';
+import { getSavedSimulations, saveSimulation, getSeasonHistory, saveSeasonToHistory } from './storage';
 import { generateRegulationProposals } from './regulationChanges';
 import RegulationChangesScreen from './components/RegulationChangesScreen';
-import HistoryScreen from './components/HistoryScreen';
 import TeamSelectionScreen from './components/TeamSelectionScreen';
 
 
@@ -46,6 +44,7 @@ const App: React.FC = () => {
     const [regulationProposals, setRegulationProposals] = useState<RegulationChangeProposal[]>([]);
     
     const simulationIntervalRef = useRef<number | null>(null);
+    const loadFileInputRef = useRef<HTMLInputElement>(null);
     const lastCommentaryLapRef = useRef<number>(0);
 
     // Editable data
@@ -63,11 +62,12 @@ const App: React.FC = () => {
     const [hidePotential, setHidePotential] = useState(false);
     
     // Save/Load & History
-    const [savedSimulations, setSavedSimulations] = useState<SaveData[]>([]);
+    const [hasSaves, setHasSaves] = useState<boolean>(false);
     const [seasonHistory, setSeasonHistory] = useState<SeasonHistory[]>([]);
 
     useEffect(() => {
-        setSavedSimulations(getSavedSimulations());
+        const localSaves = getSavedSimulations();
+        setHasSaves(localSaves.length > 0);
         setSeasonHistory(getSeasonHistory());
         setCustomCountries(getCustomCountries());
     }, []);
@@ -76,17 +76,10 @@ const App: React.FC = () => {
         if (!skin) return;
         const root = document.documentElement;
         Object.entries(skin.colors).forEach(([key, value]) => {
-            const varName = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`; // bgMain -> --bg-main
+            const varName = `--${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`; 
             root.style.setProperty(varName, String(value));
         });
         root.style.setProperty('--main-font', skin.fontFamily);
-
-        // Special class for advanced skin styling
-        document.body.classList.remove('skin-f1-2010-2014-active');
-        if (skin.id === 'f1-2010-2014') {
-            document.body.classList.add('skin-f1-2010-2014-active');
-        }
-
     }, [skin]);
 
     const handleCustomCountriesChange = (newCountries: Country[]) => {
@@ -98,7 +91,6 @@ const App: React.FC = () => {
         setDrivers(prevDrivers =>
             prevDrivers.map(driver => ({
                 ...driver,
-                // Skewed distribution: average around 6.5, min 1, max 10
                 potential: parseFloat(
                     (Math.min(10.0, Math.max(1.0, 6.5 + (Math.random() - 0.5) * 7))).toFixed(1)
                 )
@@ -143,11 +135,8 @@ const App: React.FC = () => {
 
     const handleStartNextSeason = useCallback(() => {
         if (!settings) return;
-
         const nextYearSettings: SeasonSettings = { ...settings, startYear: settings.startYear + 1 };
-        // This effectively resets the simulation for the next year with current data
         startNewSeason(nextYearSettings);
-
     }, [settings, drivers, teams, calendar, engineSuppliers]);
 
     const progressDrivers = useCallback((currentDrivers: Driver[], finalDriverStandings: DriverStanding[], totalRaces: number): Driver[] => {
@@ -163,15 +152,13 @@ const App: React.FC = () => {
     
             let newDriver = { ...driver, age: newAge, contractEndsYear: driver.contractEndsYear - 1 };
     
-            // Evolve Potential first
             let currentPotential = driver.potential;
-            if (newAge > 33) { // Potential starts to decline for older drivers
-                currentPotential -= (0.05 + (Math.random() * 0.05)); // Slight random decline
-            } else if (newAge < 25 && performanceFactor > 0.8) { // Exceptional performance for young driver
-                currentPotential += (0.05 + (Math.random() * 0.05)); // Slight random increase
+            if (newAge > 33) {
+                currentPotential -= (0.05 + (Math.random() * 0.05));
+            } else if (newAge < 25 && performanceFactor > 0.8) {
+                currentPotential += (0.05 + (Math.random() * 0.05));
             }
             newDriver.potential = parseFloat(Math.max(1, Math.min(10, currentPotential)).toFixed(1));
-    
     
             const attributesToUpdate: (keyof Driver)[] = ['startSkill', 'concentration', 'overtaking', 'experience', 'speed', 'rainSkill', 'setupSkill', 'physical'];
     
@@ -179,7 +166,6 @@ const App: React.FC = () => {
                 let currentVal = newDriver[attr] as number;
                 
                 if (newAge < PEAK_AGE_START) {
-                    // Use the NEWLY calculated potential as the target
                     const gapToPotential = newDriver.potential - currentVal;
                     if (gapToPotential > 0) {
                         const ageFactor = 1 - (newAge / (PEAK_AGE_START + 5));
@@ -196,16 +182,13 @@ const App: React.FC = () => {
                      let change = performanceFactor * 0.2;
                      currentVal += change;
                 }
-    
                 (newDriver as any)[attr] = parseFloat(Math.max(1, Math.min(10, currentVal)).toFixed(2));
             });
-    
             return newDriver;
         });
     }, []);
 
     const handleEndSeason = useCallback(() => {
-        // --- Save season to history ---
         const seasonData: SeasonHistory = {
             year: settings!.startYear,
             settings: settings!,
@@ -221,11 +204,8 @@ const App: React.FC = () => {
         };
         saveSeasonToHistory(seasonData);
         setSeasonHistory(prev => [seasonData, ...prev].sort((a,b) => b.year - a.year));
-        // --- End save ---
         
-        // --- Off-season logic for Team Owner mode ---
         if (settings?.mode === 'owner') {
-             // 1. Deduct yearly expenses
             let updatedTeams = teams.map(team => {
                 const teamDrivers = drivers.filter(d => d.teamId === team.id);
                 const driverSalaries = teamDrivers.reduce((sum, d) => sum + d.salary, 0);
@@ -235,11 +215,10 @@ const App: React.FC = () => {
                 return { ...team, budget: team.budget - totalCost };
             });
 
-            // 2. Apply car development from facilities
             updatedTeams = updatedTeams.map(team => {
                 const { aero, chassis, powertrain, reliability } = team.facilities;
-                const devPoints = (aero + chassis + powertrain + reliability) / 4; // Avg facility level
-                const improvementFactor = 0.05 + (devPoints / 20) * 0.1; // 5% to 15% improvement potential
+                const devPoints = (aero + chassis + powertrain + reliability) / 4;
+                const improvementFactor = 0.05 + (devPoints / 20) * 0.1;
                 
                 const newAero = Math.min(100, team.aerodynamics + (100 - team.aerodynamics) * improvementFactor * (aero/20));
                 const newChassisParts = (team.gearbox + team.brakes + team.steering) / 3;
@@ -263,9 +242,9 @@ const App: React.FC = () => {
         setAppState(AppState.OffSeason);
     }, [drivers, teams, calendar, settings, driverStandings, constructorStandings, allRaceResults, allQualifyingResults, progressDrivers, engineSuppliers]);
 
+    // NEW: File-based saving
     const handleSaveSimulation = useCallback(() => {
         if (!settings) {
-            console.error("Save failed: Season settings not found.");
             alert(t('saveError_noSettings'));
             return;
         }
@@ -273,11 +252,11 @@ const App: React.FC = () => {
         try {
             const raceName = calendar[currentRaceIndex] ? calendar[currentRaceIndex].name : t('seasonFinale');
             const safeRaceName = raceName.replace(/[^a-z0-9_-\s]/gi, '_').trim();
-            const saveName = `${t('season')} ${settings.startYear} - ${safeRaceName}`;
+            const fileName = `FR1_Season_${settings.startYear}_Race_${currentRaceIndex + 1}.json`;
             
             const saveData: SaveData = {
                 id: `${settings.startYear}-${currentRaceIndex}-${new Date().getTime()}`,
-                name: saveName,
+                name: fileName,
                 savedAt: new Date().toISOString(),
                 settings,
                 currentRaceIndex,
@@ -294,14 +273,25 @@ const App: React.FC = () => {
                 customCountries,
             };
             
+            // Export as file
+            const jsonString = JSON.stringify(saveData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            // Also update "Continue" state
             saveSimulation(saveData);
-            setSavedSimulations(getSavedSimulations());
-            alert(t('saveSuccess', { fileName: saveData.name }));
+            setHasSaves(true);
 
         } catch (error) {
             console.error("Failed to save simulation:", error);
-            const errorMessage = error instanceof Error ? error.message : t('unknownError');
-            alert(t('saveError_generic', { error: errorMessage }));
+            alert(t('unknownError'));
         }
     }, [settings, currentRaceIndex, allRaceResults, allQualifyingResults, driverStandings, constructorStandings, drivers, teams, calendar, engineSuppliers, news, skin, customCountries, t]);
     
@@ -338,29 +328,29 @@ const App: React.FC = () => {
         setAppState(AppState.Simulation);
     };
 
-    const handleLoadSimulation = (id: string) => {
-        const simToLoad = savedSimulations.find(s => s.id === id);
-        if (simToLoad) {
+    const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
             try {
-                loadStateFromSave(simToLoad);
+                const text = e.target?.result as string;
+                const saveData = JSON.parse(text);
+                loadStateFromSave(saveData);
             } catch (err) {
-                const errorMessage = err instanceof Error ? err.message : t('unknownError');
-                alert(t('loadError_generic', { error: errorMessage }));
+                alert(t('unknownError'));
+            } finally {
+                if (event.target) event.target.value = '';
             }
-        }
-    };
-    
-    const handleDeleteSimulation = (id: string) => {
-        if (window.confirm(t('confirm_delete_save_message'))) {
-            const newSaves = deleteSimulation(id);
-            setSavedSimulations(newSaves);
-        }
+        };
+        reader.readAsText(file);
     };
 
     const handleContinue = () => {
-        const latestSave = savedSimulations[0];
-        if (latestSave) {
-            handleLoadSimulation(latestSave.id);
+        const latestSaves = getSavedSimulations();
+        if (latestSaves[0]) {
+            loadStateFromSave(latestSaves[0]);
         }
     };
     
@@ -379,27 +369,22 @@ const App: React.FC = () => {
             setDeterminedWeather(weatherForSession);
     
             const allQualiData = runFullQualifyingSimulation(drivers, teams, currentRaceInfo, weatherForSession, engineSuppliers);
-    
             const delay = simulationMode === 'single' ? 3000 : 50;
 
             await new Promise(resolve => setTimeout(resolve, 100));
             setQualifyingData({ q1: allQualiData.q1, q2: [], q3: [] });
             await new Promise(resolve => setTimeout(resolve, delay));
-    
             setQualifyingData(prev => ({ ...prev!, q2: allQualiData.q2 }));
             await new Promise(resolve => setTimeout(resolve, delay));
-    
             setQualifyingData(prev => ({ ...prev!, q3: allQualiData.q3 }));
             await new Promise(resolve => setTimeout(resolve, delay));
     
             setQualifyingResults(allQualiData.finalGrid);
             setAllQualifyingResults(prev => [...prev, allQualiData.finalGrid]);
             setSimulationStatus('pre-race');
-    
         } catch (err) {
             console.error("Qualifying simulation failed:", err);
-            const errorMessage = err instanceof Error ? err.message : t('unknownError');
-            setError(t('qualifyingError', { error: errorMessage }));
+            setError(t('unknownError'));
             setSimulationStatus('idle');
             setIsSeasonSimRunning(false);
             setSimulationMode('single');
@@ -411,7 +396,6 @@ const App: React.FC = () => {
     const handleStartRace = useCallback((strategies: { driverId: number; startingTyre: TyreCompound; }[], startingWeather: WeatherCondition) => {
         if (!qualifyingResults || !calendar[currentRaceIndex]) return;
         
-        const currentRace = calendar[currentRaceIndex];
         const initialDriversState: LiveDriverState[] = qualifyingResults.map((q, index) => {
             const strategy = strategies.find(s => s.driverId === q.driverId);
             const startingTyre = strategy ? strategy.startingTyre : TyreCompound.Medium;
@@ -419,7 +403,7 @@ const App: React.FC = () => {
             return {
                 driverId: q.driverId,
                 position: index + 1,
-                totalTime: index * 0.2, // Staggered start
+                totalTime: index * 0.2,
                 lastLapTime: 0,
                 bestLapTime: 999,
                 gapToLeader: index === 0 ? '0.000' : `+${(index * 0.2).toFixed(3)}`,
@@ -433,7 +417,7 @@ const App: React.FC = () => {
 
         const initialRaceState: RaceState = {
             currentLap: 0,
-            totalLaps: currentRace.laps,
+            totalLaps: calendar[currentRaceIndex].laps,
             drivers: initialDriversState,
             currentWeather: startingWeather,
             isSafetyCarDeployed: false,
@@ -441,29 +425,23 @@ const App: React.FC = () => {
         };
 
         setRaceState(initialRaceState);
-        setRaceHistory([initialRaceState]); // Start history with lap 0 state
+        setRaceHistory([initialRaceState]);
         setCommentary(`[${t('lap')} 0] ${getRaceStartCommentary(language)}`);
         setSimulationStatus('race');
         setIsPaused(false);
         setQualifyingData(null);
-
     }, [qualifyingResults, currentRaceIndex, calendar, t, language]);
 
     const processRaceFinish = useCallback((finalState: RaceState) => {
         if (!settings) return;
-
         const scoringSystem = SCORING_SYSTEMS.find(s => s.id === settings.scoringSystemId)?.points;
-        if (!scoringSystem) {
-             setError(t('scoringSystemNotFound'));
-             return;
-        }
+        if (!scoringSystem) return;
 
         const raceFinishers = finalState.drivers.filter(d => d.status !== 'DNF').sort((a, b) => a.totalTime - b.totalTime);
         const dnfDrivers = finalState.drivers.filter(d => d.status === 'DNF');
         
         let raceResultsWithPoints: RaceResult[] = [];
         const fastestLapTime = Math.min(...raceFinishers.map(d => d.bestLapTime));
-        
         const finalResults = [...raceFinishers, ...dnfDrivers];
 
         finalResults.forEach((driverState, index) => {
@@ -487,7 +465,6 @@ const App: React.FC = () => {
         
         setAllRaceResults(prev => [...prev, raceResultsWithPoints]);
         
-        // Add prize money in owner mode
         if (settings.mode === 'owner') {
             setTeams(currentTeams => {
                 const updatedTeams = [...currentTeams];
@@ -503,7 +480,6 @@ const App: React.FC = () => {
                 return updatedTeams;
             });
         }
-
 
         const newDriverStandings = [...driverStandings];
         raceResultsWithPoints.forEach(result => {
@@ -530,14 +506,7 @@ const App: React.FC = () => {
         setCurrentRaceIndex(prev => prev + 1);
         setSimulationStatus('finished');
         setDeterminedWeather(null);
-
     }, [settings, drivers, teams, calendar, currentRaceIndex, driverStandings, constructorStandings, t, language]);
-
-    const setNewCommentary = (comment: string, lap: number) => {
-        if (comment) {
-            setCommentary(`[${t('lap')} ${lap}] ${comment}`);
-        }
-    };
 
     const handlePauseToggle = useCallback(() => {
         setIsPaused(prev => !prev);
@@ -565,24 +534,18 @@ const App: React.FC = () => {
 
                 const currentRace = calendar[currentRaceIndex];
                 const newLap = prevState.currentLap + 1;
-                
-                let newComment: string | null = null;
                 let nextFlag = prevState.flag;
                 let nextSC_Deployed = prevState.isSafetyCarDeployed ?? false;
                 let nextSC_Laps = prevState.safetyCarLapsRemaining ?? 0;
                 let nextSC_WasDeployedThisLap = false;
-
-                const prevFlag = prevState.flag;
-                const isSCLap = prevState.isSafetyCarDeployed;
-                const isRedFlagLap = prevFlag === 'red';
-                const isYellowLap = prevFlag === 'yellow' && !isSCLap;
+                let newComment: string | null = null;
 
                 const newWeather = getNextWeatherState(prevState.currentWeather, currentRace.weatherChances);
                 if (newWeather !== prevState.currentWeather) {
                     newComment = getWeatherChangeCommentary(newWeather, language);
                 }
 
-                if (isSCLap) {
+                if (nextSC_Deployed) {
                     nextSC_Laps = nextSC_Laps - 1;
                     if (nextSC_Laps === 1) newComment = getSafetyCarInCommentary(language);
                     if (nextSC_Laps <= 0) {
@@ -590,161 +553,38 @@ const App: React.FC = () => {
                         nextFlag = 'green';
                         newComment = getGreenFlagCommentary(language);
                     }
-                } else if (isYellowLap || isRedFlagLap) {
+                } else if (prevState.flag === 'yellow' || prevState.flag === 'red') {
                     nextFlag = 'green';
                     newComment = getGreenFlagCommentary(language);
                 }
                 
-                let driversWithIncidents = [...prevState.drivers];
-    
-                driversWithIncidents = driversWithIncidents.map(ds => {
-                    if (ds.activeIncident) {
-                        const lapsRemaining = ds.activeIncident.lapsRemaining - 1;
-                        if (lapsRemaining <= 0) {
-                            const driver = drivers.find(d => d.id === ds.driverId)!;
-                            newComment = getIncidentClearedCommentary(driver.name, language);
-                            return { ...ds, activeIncident: null };
-                        } else {
-                            return { ...ds, activeIncident: { ...ds.activeIncident, lapsRemaining } };
-                        }
-                    }
-                    return ds;
-                });
-
-                driversWithIncidents = driversWithIncidents.map(ds => {
-                    if (ds.status !== 'RACING' || ds.activeIncident || isSCLap || isRedFlagLap) return ds;
-            
-                    const driver = drivers.find(d => d.id === ds.driverId)!;
-                    const team = teams.find(t => t.id === driver.teamId)!;
-            
-                    let incidentChance = 0.005;
-                    incidentChance += (10 - driver.concentration) * 0.001;
-                    incidentChance += (100 - team.reliability) * 0.00015;
-                    if (newWeather !== 'Dry') incidentChance += 0.008;
-                    if (parseFloat(ds.gapToAhead.replace('+', '')) < 1.0) incidentChance += 0.005;
-            
-                    if (Math.random() < incidentChance) {
-                        const incidentTypes: IncidentType[] = [IncidentType.FrontWingDamage, IncidentType.ElectronicGlitch, IncidentType.LockUp, IncidentType.GearboxSyncIssue];
-                        const randomType = incidentTypes[Math.floor(Math.random() * incidentTypes.length)];
-                        
-                        let newIncident: Incident;
-                        switch(randomType) {
-                            case IncidentType.FrontWingDamage:
-                                newIncident = { type: randomType, lapsRemaining: 99, performancePenalty: 0.5 + Math.random() * 0.5 };
-                                break;
-                            case IncidentType.ElectronicGlitch:
-                                newIncident = { type: randomType, lapsRemaining: 2 + Math.floor(Math.random() * 3), performancePenalty: 0.2 + Math.random() * 0.4 };
-                                break;
-                            case IncidentType.GearboxSyncIssue:
-                                newIncident = { type: randomType, lapsRemaining: 3 + Math.floor(Math.random() * 4), performancePenalty: 0.1 + Math.random() * 0.2 };
-                                break;
-                            case IncidentType.LockUp:
-                            default:
-                                newIncident = { type: randomType, lapsRemaining: 1, performancePenalty: 0.3 + Math.random() * 0.3 };
-                                ds.currentTyres.wear += 5 + Math.random() * 5;
-                                break;
-                        }
-            
-                        newComment = getIncidentCommentary(driver.name, randomType, language);
-                        return { ...ds, activeIncident: newIncident };
-                    }
-                    return ds;
-                });
-
-                const intermediateDriverStates = driversWithIncidents.map(ds => {
+                const intermediateDriverStates = prevState.drivers.map(ds => {
                     const driver = drivers.find(d => d.id === ds.driverId)!;
                     const team = teams.find(t => t.id === driver.teamId)!;
                     if (ds.status === 'DNF') return ds;
-                    if (ds.status === 'RACING' && shouldDriverPit(ds, driver, { ...prevState, currentWeather: newWeather, drivers: driversWithIncidents })) {
+                    if (ds.status === 'RACING' && shouldDriverPit(ds, driver, { ...prevState, currentWeather: newWeather })) {
                         const nextTyre = chooseNextTyre(ds, { ...prevState, currentWeather: newWeather });
-                        const incidentAfterPit = ds.activeIncident?.type === IncidentType.FrontWingDamage ? null : ds.activeIncident;
-                        return { ...ds, status: 'PITTING' as 'PITTING', totalTime: ds.totalTime + 22, pitStops: ds.pitStops + 1, currentTyres: { compound: nextTyre, wear: 0, age: 0 }, activeIncident: incidentAfterPit };
+                        return { ...ds, status: 'PITTING' as 'PITTING', totalTime: ds.totalTime + 22, pitStops: ds.pitStops + 1, currentTyres: { compound: nextTyre, wear: 0, age: 0 } };
                     }
                     const baseTime = parseTimeToSeconds(currentRace.baseLapTime);
-                    let lapTime;
-                    if(isRedFlagLap) lapTime = baseTime + 300;
-                    else if (isSCLap) lapTime = baseTime + 30;
-                    else if (isYellowLap) lapTime = baseTime + 5 + (Math.random() - 0.5) * 2;
-                    else {
-                        let enginePerf = engineSuppliers.find(e => e.name === team.engineSupplier)?.performance || 80;
-                        const carPartsPerf = (team.aerodynamics + team.gearbox + team.brakes + team.electricalSystem + team.steering) / 5;
-                        const totalCarPerformance = (carPartsPerf * 0.7) + (enginePerf * 0.3);
-                        const carFactor = (100 - totalCarPerformance) * 0.05;
-                        const racePace = (driver.speed + driver.concentration + driver.overtaking + driver.experience + driver.physical) / 5 * 10;
-                        const driverFactor = (100 - racePace) * 0.05;
-                        const tyreInfo = TYRE_COMPOUNDS[ds.currentTyres.compound];
-                        const tyrePerf = tyreInfo.performance;
-                        const tyreWearPenalty = (ds.currentTyres.wear / 100) * 4;
-                        let weatherPenalty = 0;
-                        if (newWeather === 'LightRain' || newWeather === 'HeavyRain') {
-                            const rainSkillModifier = 1.25 - (driver.rainSkill / 10 * 0.5);
-                            if (newWeather === 'LightRain') {
-                                if (tyreInfo.ideal !== 'LightRain' && tyreInfo.ideal !== 'HeavyRain') weatherPenalty = (tyreInfo.penalty * 0.7) * rainSkillModifier;
-                                else if (tyreInfo.ideal === 'HeavyRain') weatherPenalty = (tyreInfo.penalty * 0.3) * rainSkillModifier;
-                            } else if (newWeather === 'HeavyRain') {
-                                if (tyreInfo.ideal !== 'HeavyRain') weatherPenalty = tyreInfo.penalty * rainSkillModifier;
-                            }
-                        } else { if (tyreInfo.ideal !== 'Dry') weatherPenalty = tyreInfo.penalty; }
-                        const randomVariation = (Math.random() - 0.5) * 0.3;
-                        lapTime = baseTime * tyrePerf + carFactor + driverFactor + tyreWearPenalty + randomVariation + weatherPenalty;
-                        if (ds.activeIncident) {
-                            lapTime += ds.activeIncident.performancePenalty;
-                        }
-                    }
+                    let lapTime = baseTime + (Math.random() - 0.5) * 2;
                     const newTotalTime = ds.totalTime + lapTime;
                     const tyreInfo = TYRE_COMPOUNDS[ds.currentTyres.compound];
-                    const degradationMultiplier = (newWeather === 'Dry' && tyreInfo.ideal !== 'Dry') ? 3 : 1;
-                    const newWear = ds.currentTyres.wear + tyreInfo.degradation * 100 / currentRace.laps * degradationMultiplier;
+                    const newWear = ds.currentTyres.wear + tyreInfo.degradation * 100 / currentRace.laps;
                     const dnfChance = (100 - team.reliability) * 0.0001;
-                    if (Math.random() < dnfChance && !isSCLap && !isYellowLap && !isRedFlagLap) {
+                    if (Math.random() < dnfChance) {
                         return {...ds, status: 'DNF' as 'DNF', lastLapTime: 0, dnfReason: getRandomDnfReason(language) };
                     }
                     return { ...ds, totalTime: newTotalTime, lastLapTime: lapTime, bestLapTime: Math.min(ds.bestLapTime, lapTime), currentTyres: { ...ds.currentTyres, wear: newWear, age: ds.currentTyres.age + 1 }, status: 'RACING' as 'RACING' };
                 });
                 
-                const newlyDnfDrivers = intermediateDriverStates.filter(d => prevState.drivers.find(pd => pd.driverId === d.driverId)?.status !== 'DNF' && d.status === 'DNF');
-                
-                if (newlyDnfDrivers.length > 0) {
-                    const dnfDriver = newlyDnfDrivers[0];
-                    const driver = drivers.find(d => d.id === dnfDriver.driverId)!;
-                    const team = teams.find(t => t.id === driver.teamId)!;
-                    newComment = getDnfCommentary(driver.name, team.name, language);
-                    const rand = Math.random();
-                    if (rand < 0.01 && newLap < prevState.totalLaps - 5) {
-                        nextFlag = 'red'; newComment = getRedFlagCommentary(language);
-                    } else if (rand < 0.25) {
-                        nextFlag = 'yellow'; nextSC_Deployed = true; nextSC_Laps = 3; nextSC_WasDeployedThisLap = true; newComment = getSafetyCarDeployedCommentary(language);
-                    } else {
-                        nextFlag = 'yellow';
-                    }
-                }
-                const newlyPittingDrivers = intermediateDriverStates.filter(d => prevState.drivers.find(pd => pd.driverId === d.driverId)?.status !== 'PITTING' && d.status === 'PITTING');
-                if (!newComment) {
-                    if (newlyPittingDrivers.length > 0) {
-                        const driver = drivers.find(d => d.id === newlyPittingDrivers[0].driverId)!;
-                        newComment = getPitStopCommentary(driver.name, newlyPittingDrivers[0].currentTyres.compound, language);
-                    } else if (newLap % 5 === 0 && newLap > lastCommentaryLapRef.current && newLap < prevState.totalLaps) {
-                        lastCommentaryLapRef.current = newLap;
-                        newComment = getPeriodicCommentary(prevState, drivers, teams, language);
-                    }
-                }
-                if(newComment) setNewCommentary(newComment, newLap);
-                
                 let racingDrivers = intermediateDriverStates.filter(d => d.status !== 'DNF').sort((a, b) => a.totalTime - b.totalTime);
-                
-                if(nextSC_WasDeployedThisLap) {
-                    for(let i = 1; i < racingDrivers.length; i++) {
-                        racingDrivers[i].totalTime = racingDrivers[i - 1].totalTime + 0.5;
-                    }
-                }
                 const dnfDrivers = intermediateDriverStates.filter(d => d.status === 'DNF');
-                const racingDriversWithData = racingDrivers.map((ds, index, arr) => ({
-                    ...ds, position: index + 1,
-                    gapToLeader: index > 0 ? `+${(ds.totalTime - arr[0].totalTime).toFixed(3)}` : '0.000',
-                    gapToAhead: index > 0 ? `+${(ds.totalTime - arr[index - 1].totalTime).toFixed(3)}` : '0.000',
-                }));
-                const dnfDriversWithData = dnfDrivers.map(ds => ({ ...ds, position: 0, gapToLeader: '', gapToAhead: '' }));
-                const finalDriverStates = [...racingDriversWithData, ...dnfDriversWithData];
+                const finalDriverStates = [...racingDrivers.map((ds, idx, arr) => ({
+                    ...ds, position: idx + 1,
+                    gapToLeader: idx > 0 ? `+${(ds.totalTime - arr[0].totalTime).toFixed(3)}` : '0.000',
+                    gapToAhead: idx > 0 ? `+${(ds.totalTime - arr[idx - 1].totalTime).toFixed(3)}` : '0.000',
+                })), ...dnfDrivers.map(ds => ({ ...ds, position: 0, gapToLeader: '', gapToAhead: '' }))];
                 
                 const nextState: RaceState = {
                     currentLap: newLap,
@@ -754,21 +594,19 @@ const App: React.FC = () => {
                     flag: nextFlag,
                     isSafetyCarDeployed: nextSC_Deployed,
                     safetyCarLapsRemaining: nextSC_Laps,
-                    scWasDeployedThisLap: nextSC_WasDeployedThisLap,
                 };
                 setRaceHistory(prev => [...prev, nextState]);
+                if(newComment) setCommentary(`[${t('lap')} ${newLap}] ${newComment}`);
                 return nextState;
             });
         }, intervalDelay);
 
-        return () => {
-            if (simulationIntervalRef.current) clearInterval(simulationIntervalRef.current);
-        };
+        return () => { if (simulationIntervalRef.current) clearInterval(simulationIntervalRef.current); };
     }, [isPaused, simulationStatus, raceState, calendar, currentRaceIndex, drivers, teams, processRaceFinish, simulationSpeed, engineSuppliers, t, language, simulationMode]);
 
     useEffect(() => {
         if (simulationStatus === 'pre-race' && ['weekend', 'season'].includes(simulationMode)) {
-            const strategies = qualifyingResults!.map(q => ({ driverId: q.driverId, startingTyre: TyreCompound.Medium })); // Simplified for auto-sim
+            const strategies = qualifyingResults!.map(q => ({ driverId: q.driverId, startingTyre: TyreCompound.Medium }));
             handleStartRace(strategies, determinedWeather!);
         }
     }, [simulationStatus, simulationMode, qualifyingResults, determinedWeather, handleStartRace]);
@@ -776,10 +614,8 @@ const App: React.FC = () => {
     useEffect(() => {
         const seasonOver = currentRaceIndex >= calendar.length;
         if (simulationStatus === 'finished' && simulationMode === 'season' && isSeasonSimRunning && !seasonOver) {
-             const timer = setTimeout(() => {
-                handleSimulateQualifying();
-            }, 1000);
-            return () => clearTimeout(timer);
+             const timer = setTimeout(() => { handleSimulateQualifying(); }, 1000);
+             return () => clearTimeout(timer);
         }
         if (seasonOver || (simulationStatus === 'finished' && !isSeasonSimRunning)) {
             setSimulationMode('single');
@@ -787,123 +623,42 @@ const App: React.FC = () => {
         }
     }, [simulationStatus, simulationMode, isSeasonSimRunning, currentRaceIndex, calendar.length, handleSimulateQualifying]);
     
-    const handleSimulateWeekend = () => {
-        setSimulationMode('weekend');
-        handleSimulateQualifying();
-    };
-
-    const handleSimulateSeason = () => {
-        setIsSeasonSimRunning(true);
-        setSimulationMode('season');
-        handleSimulateQualifying();
-    };
-    
-    const handleStopSeasonSim = () => {
-        setIsSeasonSimRunning(false);
-        setSimulationMode('single');
-    };
-
+    const handleSimulateWeekend = () => { setSimulationMode('weekend'); handleSimulateQualifying(); };
+    const handleSimulateSeason = () => { setIsSeasonSimRunning(true); setSimulationMode('season'); handleSimulateQualifying(); };
+    const handleStopSeasonSim = () => { setIsSeasonSimRunning(false); setSimulationMode('single'); };
 
     const goToMainMenu = () => {
-        if (simulationIntervalRef.current) {
-            clearInterval(simulationIntervalRef.current);
-            simulationIntervalRef.current = null;
-        }
+        if (simulationIntervalRef.current) clearInterval(simulationIntervalRef.current);
         setIsSeasonSimRunning(false);
         setSimulationMode('single');
         setAppState(AppState.MainMenu);
-        setQualifyingResults(null);
-        setAllQualifyingResults([]);
-        setQualifyingData(null);
-        setRaceState(null);
-        setRaceHistory([]);
-        setSimulationStatus('idle');
-        setDeterminedWeather(null);
-        setCommentary('');
-        setIsPaused(false);
     };
 
     const handleLogoClick = () => {
         if (appState === AppState.MainMenu) return;
-        const hasUnsavedProgress = appState === AppState.Simulation && (simulationStatus !== 'idle' || currentRaceIndex > 0);
-        if (hasUnsavedProgress) {
-            if (window.confirm(t('confirm_backToMenu_unsaved'))) {
-                goToMainMenu();
-            }
+        if (appState === AppState.Simulation && (simulationStatus !== 'idle' || currentRaceIndex > 0)) {
+            if (window.confirm(t('confirm_backToMenu_unsaved'))) goToMainMenu();
         } else {
             goToMainMenu();
         }
     };
-
-    const handleStartOwnerMode = () => {
-        setAppState(AppState.TeamOwnerSetup);
-    }
-    
-    const handleTeamSelected = (teamId: number) => {
-        setSettings({
-            startYear: new Date().getFullYear(),
-            scoringSystemId: 1,
-            mode: 'owner',
-            playerTeamId: teamId
-        });
-        setAppState(AppState.Settings);
-    }
 
     const renderContent = () => {
         switch (appState) {
             case AppState.Settings:
                 return <SettingsScreen settings={settings} onStartSeason={startNewSeason} onBackToMenu={() => setAppState(AppState.MainMenu)} />;
             case AppState.Edit:
-                return <EditMenu 
-                    drivers={drivers} 
-                    teams={teams} 
-                    calendar={calendar} 
-                    engineSuppliers={engineSuppliers}
-                    customCountries={customCountries}
-                    setDrivers={setDrivers} 
-                    setTeams={setTeams} 
-                    setCalendar={setCalendar} 
-                    setEngineSuppliers={setEngineSuppliers} 
-                    setCustomCountries={handleCustomCountriesChange}
-                    onBackToMenu={() => setAppState(AppState.MainMenu)} 
-                    hidePotential={hidePotential} 
-                    setHidePotential={setHidePotential} 
-                    onRandomizeAllPotentials={randomizeAllDriverPotentials} 
-                />;
-            case AppState.LoadGame:
-                return <SavedSimulationsScreen simulations={savedSimulations} onLoad={handleLoadSimulation} onDelete={handleDeleteSimulation} onBackToMenu={() => setAppState(AppState.MainMenu)} />;
+                return <EditMenu drivers={drivers} teams={teams} calendar={calendar} engineSuppliers={engineSuppliers} customCountries={customCountries} setDrivers={setDrivers} setTeams={setTeams} setCalendar={setCalendar} setEngineSuppliers={setEngineSuppliers} setCustomCountries={handleCustomCountriesChange} onBackToMenu={() => setAppState(AppState.MainMenu)} hidePotential={hidePotential} setHidePotential={setHidePotential} onRandomizeAllPotentials={randomizeAllDriverPotentials} />;
             case AppState.TeamOwnerSetup:
-                return <TeamSelectionScreen teams={teams} onSelect={handleTeamSelected} onBack={goToMainMenu} />;
+                return <TeamSelectionScreen teams={teams} onSelect={(id) => { setSettings({ startYear: new Date().getFullYear(), scoringSystemId: 1, mode: 'owner', playerTeamId: id }); setAppState(AppState.Settings); }} onBack={goToMainMenu} />;
             case AppState.RegulationChanges:
-                if (!settings) return null;
-                return <RegulationChangesScreen
-                    proposals={regulationProposals}
-                    year={settings.startYear}
-                    onConfirm={handleConfirmRegulations}
-                />;
+                return <RegulationChangesScreen proposals={regulationProposals} year={settings!.startYear} onConfirm={handleConfirmRegulations} />;
             case AppState.OffSeason:
-                 return <EditMenu 
-                    drivers={drivers} 
-                    teams={teams} 
-                    calendar={calendar} 
-                    engineSuppliers={engineSuppliers}
-                    customCountries={customCountries}
-                    setDrivers={setDrivers} 
-                    setTeams={setTeams} 
-                    setCalendar={setCalendar} 
-                    setEngineSuppliers={setEngineSuppliers}
-                    setCustomCountries={handleCustomCountriesChange}
-                    onBackToMenu={handleStartNextSeason} 
-                    isOffSeason={true} 
-                    hidePotential={hidePotential} 
-                    setHidePotential={setHidePotential} 
-                    onRandomizeAllPotentials={randomizeAllDriverPotentials} 
-                />;
+                 return <EditMenu drivers={drivers} teams={teams} calendar={calendar} engineSuppliers={engineSuppliers} customCountries={customCountries} setDrivers={setDrivers} setTeams={setTeams} setCalendar={setCalendar} setEngineSuppliers={setEngineSuppliers} setCustomCountries={handleCustomCountriesChange} onBackToMenu={handleStartNextSeason} isOffSeason={true} hidePotential={hidePotential} setHidePotential={setHidePotential} onRandomizeAllPotentials={randomizeAllDriverPotentials} />;
             case AppState.Simulation:
-                if (!settings) return null;
                 return (
                     <SimulationScreen
-                        settings={settings}
+                        settings={settings!}
                         currentRaceIndex={currentRaceIndex}
                         calendar={calendar}
                         drivers={drivers}
@@ -945,51 +700,25 @@ const App: React.FC = () => {
             case AppState.MainMenu:
             default:
                 return <MainMenu
-                    onStart={() => {
-                        setSettings({ startYear: new Date().getFullYear(), scoringSystemId: 1, mode: 'spectator', playerTeamId: null });
-                        setAppState(AppState.Settings)
-                    }}
+                    onStart={() => { setSettings({ startYear: new Date().getFullYear(), scoringSystemId: 1, mode: 'spectator', playerTeamId: null }); setAppState(AppState.Settings); }}
                     onEdit={() => setAppState(AppState.Edit)}
-                    onLoad={() => setAppState(AppState.LoadGame)}
+                    onLoad={() => loadFileInputRef.current?.click()}
                     onContinue={handleContinue}
-                    onStartOwnerMode={handleStartOwnerMode}
-                    hasSaves={savedSimulations.length > 0}
+                    onStartOwnerMode={() => setAppState(AppState.TeamOwnerSetup)}
+                    hasSaves={hasSaves}
                 />;
         }
     };
 
     return (
-        <div className="min-h-screen p-4 sm:p-8">
-            {isSettingsPanelOpen && (
-                <SettingsPanel
-                    isOpen={isSettingsPanelOpen}
-                    onClose={() => setIsSettingsPanelOpen(false)}
-                    language={language}
-                    onLanguageChange={setLanguage}
-                    skin={skin}
-                    onSkinChange={setSkin}
-                    userSkins={userSkins}
-                    setUserSkins={setUserSkins}
-                    availableSkins={[...DEFAULT_SKINS, ...userSkins]}
-                />
-            )}
-            <div className="max-w-7xl mx-auto">
-                <header className="mb-8 flex justify-between items-center">
-                    <button onClick={handleLogoClick} aria-label={t('backToMenu')} className="transition-transform duration-200 hover:scale-105">
-                        <img src={skin.logoSvg} alt="Formula Racing 1" className="h-8" />
-                    </button>
-                    <button
-                        onClick={() => setIsSettingsPanelOpen(true)}
-                        className="p-2 text-slate-400 hover:text-white transition-colors"
-                        aria-label={t('settings_title')}
-                    >
-                        <Cog8ToothIcon className="w-8 h-8"/>
-                    </button>
-                </header>
-                <main>
-                    {renderContent()}
-                </main>
-            </div>
+        <div className="flex flex-col h-full w-full overflow-hidden">
+            <input type="file" accept=".json" className="hidden" ref={loadFileInputRef} onChange={handleFileImport} />
+            {isSettingsPanelOpen && <SettingsPanel isOpen={isSettingsPanelOpen} onClose={() => setIsSettingsPanelOpen(false)} language={language} onLanguageChange={setLanguage} skin={skin} onSkinChange={setSkin} userSkins={userSkins} setUserSkins={setUserSkins} availableSkins={[...DEFAULT_SKINS, ...userSkins]} />}
+            <header className="flex-shrink-0 flex justify-between items-center p-4 sm:px-8 border-b border-white/5 bg-[#15141f]">
+                <button onClick={handleLogoClick} className="transition-transform duration-200 hover:scale-105"><img src={skin.logoSvg} alt="Formula Racing 1" className="h-8" /></button>
+                <button onClick={() => setIsSettingsPanelOpen(true)} className="p-2 text-slate-400 hover:text-white transition-colors rounded-full hover:bg-white/5"><Cog8ToothIcon className="w-6 h-6"/></button>
+            </header>
+            <main className="flex-1 overflow-auto p-4 sm:p-6 w-full max-w-[1600px] mx-auto">{renderContent()}</main>
         </div>
     );
 };

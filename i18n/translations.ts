@@ -276,6 +276,14 @@ export const translations = {
     'confirm_upgrade_facility': { 'pt-BR': 'Melhorar {{name}} para o nível {{level}} por ${{cost}}M?', 'en-US': 'Upgrade {{name}} to level {{level}} for ${{cost}}M?' },
     'error_insufficient_funds': { 'pt-BR': 'Fundos insuficientes!', 'en-US': 'Insufficient funds!' },
     
+    // History Title and Specifics
+    'history_title': { 'pt-BR': 'Histórico', 'en-US': 'History' },
+    'history_noHistory': { 'pt-BR': 'Nenhum histórico disponível.', 'en-US': 'No history available.' },
+    'history_selectSeason': { 'pt-BR': 'Selecionar Temporada', 'en-US': 'Select Season' },
+    'history_seasonSummary': { 'pt-BR': 'Resumo da Temporada {{year}}', 'en-US': 'Season {{year}} Summary' },
+    'history_raceCalendar': { 'pt-BR': 'Calendário de Corridas', 'en-US': 'Race Calendar' },
+    'history_viewResults': { 'pt-BR': 'Ver Resultados', 'en-US': 'View Results' },
+
     // Custom Country
     'create_country': { 'pt-BR': 'Criar País Personalizado', 'en-US': 'Create Custom Country' },
     'country_name': { 'pt-BR': 'Nome do País', 'en-US': 'Country Name' },

@@ -7,7 +7,6 @@ import LiveRaceView from './LiveRaceView';
 import PreRaceStrategyScreen from './PreRaceStrategyScreen';
 import StopwatchIcon from './icons/StopwatchIcon';
 import HomeIcon from './icons/HomeIcon';
-import CalendarIcon from './icons/CalendarIcon';
 import SpeedControl from './SpeedControl';
 import Podium from './Podium';
 import FloppyDiskIcon from './icons/FloppyDiskIcon';
@@ -23,6 +22,7 @@ import HistoryScreen from './HistoryScreen';
 import TeamManagementPanel from './TeamManagementPanel';
 import UserIcon from './icons/UserIcon';
 import CountryFlag from './CountryFlag';
+import ExclamationTriangleIcon from './icons/ExclamationTriangleIcon';
 
 
 const NewsPanel: React.FC<{ news: NewsArticle[], drivers: Driver[], teams: Team[] }> = ({ news, drivers, teams }) => {
@@ -61,19 +61,7 @@ const NewsPanel: React.FC<{ news: NewsArticle[], drivers: Driver[], teams: Team[
         return parts.map((part, index) => {
             const entity = entities.find(e => e.name === part);
             if (entity) {
-                const hex = entity.color.replace('#', '');
-                if (hex.length < 6) return <span key={index}>{part}</span>;
-                const r = parseInt(hex.substring(0, 2), 16);
-                const g = parseInt(hex.substring(2, 4), 16);
-                const b = parseInt(hex.substring(4, 6), 16);
-                const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-                
-                const style: React.CSSProperties = {
-                    color: entity.color,
-                    fontWeight: 'bold',
-                    textShadow: brightness < 70 ? `0 0 8px ${entity.accent === '#000000' ? '#FFFFFF' : entity.accent}` : 'none',
-                };
-                return <span key={index} style={style}>{part}</span>;
+                return <span key={index} className="font-bold" style={{ color: entity.color }}>{part}</span>;
             }
             return <React.Fragment key={index}>{part}</React.Fragment>;
         });
@@ -81,8 +69,11 @@ const NewsPanel: React.FC<{ news: NewsArticle[], drivers: Driver[], teams: Team[
 
     if (news.length === 0) {
         return (
-            <div className="text-center py-10">
-                <p className="text-slate-400">{t('news_noNews')}</p>
+            <div className="text-center py-20 flex flex-col items-center justify-center animate-fade-in">
+                <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                    <SpinnerIcon className="w-8 h-8 text-slate-600" />
+                </div>
+                <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">{t('news_noNews')}</p>
             </div>
         )
     }
@@ -90,28 +81,27 @@ const NewsPanel: React.FC<{ news: NewsArticle[], drivers: Driver[], teams: Team[
     const TRUNCATE_LENGTH = 250;
 
     return (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto h-full pr-2 content-start pb-10">
             {sortedNews.map(article => {
                 const isExpanded = expandedArticleId === article.id;
                 const isLong = article.body.length > TRUNCATE_LENGTH;
-                
-                const bodyContent = isLong && !isExpanded
-                    ? `${article.body.substring(0, TRUNCATE_LENGTH)}...`
-                    : article.body;
+                const bodyContent = isLong && !isExpanded ? `${article.body.substring(0, TRUNCATE_LENGTH)}...` : article.body;
 
                 return (
-                    <div key={article.id} className="bg-slate-500/10 rounded-lg overflow-hidden p-4 animate-fade-in">
-                        <p className="text-xs text-slate-400 uppercase">{article.date}</p>
-                        <h4 className="font-bold text-lg text-slate-200 mb-2">{article.headline}</h4>
-                        <p className="text-slate-300 whitespace-pre-line">
+                    <div key={article.id} className="glass overflow-hidden p-6 animate-fade-in hover:bg-white/5 transition-all duration-300 rounded-xl group border-l-4 border-l-red-600">
+                        <div className="flex justify-between items-start mb-4">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white/5 px-2 py-1 rounded">{article.date}</span>
+                        </div>
+                        <h4 className="font-black text-xl text-white mb-4 leading-tight font-racing group-hover:text-red-500 transition-colors">{article.headline}</h4>
+                        <p className="text-slate-400 text-sm leading-relaxed font-medium">
                             {renderHighlightedBody(bodyContent)}
                         </p>
                         {isLong && (
                             <button
                                 onClick={() => toggleArticle(article.id)}
-                                className="text-sm font-bold mt-2 text-[#00e051] hover:text-green-300 transition-colors"
+                                className="text-[10px] font-black mt-6 text-red-600 hover:text-red-400 transition-colors uppercase tracking-widest"
                             >
-                                {isExpanded ? t('readLess') : t('readMore')}
+                                {isExpanded ? 'Read Less -' : 'Read More +'}
                             </button>
                         )}
                     </div>
@@ -227,7 +217,7 @@ const SimulationScreen: React.FC<SimulationScreenProps> = ({
         if (!playerTeam) return;
 
         const level = playerTeam.facilities[facility];
-        const cost = (level + 1) * 2; // Example cost formula
+        const cost = (level + 1) * 2;
 
         if (playerTeam.budget >= cost) {
             if (window.confirm(t('confirm_upgrade_facility', { name: t(`facility_${facility}`), cost, level: level + 1 }))) {
@@ -299,44 +289,58 @@ const SimulationScreen: React.FC<SimulationScreenProps> = ({
   const renderIdleContent = () => {
       if (podiumData || championData) return null; 
       return (
-        <>
-            <div className="flex border-b border-slate-700 mb-4">
-                <button onClick={() => setActiveView('standings')} className={`px-4 py-2 font-bold uppercase text-sm ${activeView === 'standings' ? 'border-b-2 border-[#00e051] text-white' : 'text-slate-400'}`}>{t('standings')}</button>
-                {isOwnerMode && <button onClick={() => setActiveView('myTeam')} className={`px-4 py-2 font-bold uppercase text-sm flex items-center gap-2 ${activeView === 'myTeam' ? 'border-b-2 border-[#00e051] text-white' : 'text-slate-400'}`}><UserIcon className="w-5 h-5" />{t('myTeam')}</button>}
-                <button onClick={() => setActiveView('news')} className={`px-4 py-2 font-bold uppercase text-sm ${activeView === 'news' ? 'border-b-2 border-[#00e051] text-white' : 'text-slate-400'}`}>{t('news')}</button>
-                <button onClick={() => setActiveView('charts')} className={`px-4 py-2 font-bold uppercase text-sm ${activeView === 'charts' ? 'border-b-2 border-[#00e051] text-white' : 'text-slate-400'}`}>{t('charts')}</button>
-                {history.length > 0 && <button onClick={() => setActiveView('history')} className={`px-4 py-2 font-bold uppercase text-sm ${activeView === 'history' ? 'border-b-2 border-[#00e051] text-white' : 'text-slate-400'}`}>{t('history_title')}</button>}
+        <div className="flex flex-col h-full overflow-hidden animate-fade-in">
+            {/* Nav Tabs */}
+            <div className="flex gap-2 mb-6 border-b border-white/5 sticky top-0 z-10">
+                <button onClick={() => setActiveView('standings')} className={`px-4 py-3 font-black uppercase text-[10px] tracking-widest border-b-2 transition-all ${activeView === 'standings' ? 'border-red-600 text-white bg-white/5' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>{t('standings')}</button>
+                {isOwnerMode && <button onClick={() => setActiveView('myTeam')} className={`px-4 py-3 font-black uppercase text-[10px] tracking-widest border-b-2 flex items-center gap-2 transition-all ${activeView === 'myTeam' ? 'border-red-600 text-white bg-white/5' : 'border-transparent text-slate-500 hover:text-slate-300'}`}><UserIcon className="w-3.5 h-3.5" />{t('myTeam')}</button>}
+                <button onClick={() => setActiveView('news')} className={`px-4 py-3 font-black uppercase text-[10px] tracking-widest border-b-2 transition-all ${activeView === 'news' ? 'border-red-600 text-white bg-white/5' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>{t('news')}</button>
+                <button onClick={() => setActiveView('charts')} className={`px-4 py-3 font-black uppercase text-[10px] tracking-widest border-b-2 transition-all ${activeView === 'charts' ? 'border-red-600 text-white bg-white/5' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>{t('charts')}</button>
+                {history.length > 0 && <button onClick={() => setActiveView('history')} className={`px-4 py-3 font-black uppercase text-[10px] tracking-widest border-b-2 transition-all ${activeView === 'history' ? 'border-red-600 text-white bg-white/5' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>{t('history_title')}</button>}
             </div>
-            {activeView === 'standings' ? (
-                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <StandingsTable title={t('driversChampionship')} standings={driverStandings} type="driver" seasonOver={seasonOver} drivers={drivers} teams={teams} customCountries={customCountries} onRowClick={handleOpenProfile} />
-                  <StandingsTable title={t('constructorsChampionship')} standings={constructorStandings} type="constructor" seasonOver={seasonOver} drivers={drivers} teams={teams} customCountries={customCountries} onRowClick={handleOpenProfile} />
-                </div>
-            ) : activeView === 'myTeam' && isOwnerMode && playerTeam ? (
-                <TeamManagementPanel 
-                    team={playerTeam}
-                    drivers={drivers.filter(d => d.teamId === playerTeam.id)}
-                    engineSupplier={engineSuppliers.find(e => e.name === playerTeam.engineSupplier)!}
-                    onUpgradeFacility={handleUpgradeFacility}
-                />
-            ) : activeView === 'news' ? (
-                <NewsPanel news={news} drivers={drivers} teams={teams} />
-            ) : activeView === 'charts' ? (
-                <ChartsView
-                    raceHistory={raceHistory}
-                    drivers={drivers}
-                    teams={teams}
-                    allRaceResults={allRaceResults}
-                    allQualifyingResults={allQualifyingResults}
-                    settings={settings}
-                    calendar={calendar}
-                    driverStandings={driverStandings}
-                    customCountries={customCountries}
-                />
-            ) : activeView === 'history' ? (
-                <HistoryScreen history={history} customCountries={customCountries} />
-            ) : null}
-        </>
+            
+            <div className="flex-1 overflow-auto min-h-0">
+                {activeView === 'standings' ? (
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                        <div className="glass rounded-xl overflow-hidden carbon-pattern h-full">
+                            <StandingsTable title={t('driversChampionship')} standings={driverStandings} type="driver" seasonOver={seasonOver} drivers={drivers} teams={teams} customCountries={customCountries} onRowClick={handleOpenProfile} />
+                        </div>
+                        <div className="glass rounded-xl overflow-hidden carbon-pattern h-full">
+                            <StandingsTable title={t('constructorsChampionship')} standings={constructorStandings} type="constructor" seasonOver={seasonOver} drivers={drivers} teams={teams} customCountries={customCountries} onRowClick={handleOpenProfile} />
+                        </div>
+                    </div>
+                ) : activeView === 'myTeam' && isOwnerMode && playerTeam ? (
+                    <div className="h-full overflow-y-auto pr-2">
+                        <TeamManagementPanel 
+                            team={playerTeam}
+                            drivers={drivers.filter(d => d.teamId === playerTeam.id)}
+                            engineSupplier={engineSuppliers.find(e => e.name === playerTeam.engineSupplier)!}
+                            onUpgradeFacility={handleUpgradeFacility}
+                        />
+                    </div>
+                ) : activeView === 'news' ? (
+                    <NewsPanel news={news} drivers={drivers} teams={teams} />
+                ) : activeView === 'charts' ? (
+                    <div className="h-full overflow-y-auto pr-2">
+                        <ChartsView
+                            raceHistory={raceHistory}
+                            drivers={drivers}
+                            teams={teams}
+                            allRaceResults={allRaceResults}
+                            allQualifyingResults={allQualifyingResults}
+                            settings={settings}
+                            calendar={calendar}
+                            driverStandings={driverStandings}
+                            customCountries={customCountries}
+                        />
+                    </div>
+                ) : activeView === 'history' ? (
+                    <div className="h-full overflow-y-auto pr-2">
+                        <HistoryScreen history={history} customCountries={customCountries} />
+                    </div>
+                ) : null}
+            </div>
+        </div>
       )
   };
 
@@ -392,7 +396,7 @@ const SimulationScreen: React.FC<SimulationScreenProps> = ({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col h-full gap-6">
       {lastRaceResults && qualifyingResults && simulationStatus === 'finished' && (
         <RaceResultModal
           isOpen={isModalOpen}
@@ -420,73 +424,89 @@ const SimulationScreen: React.FC<SimulationScreenProps> = ({
           customCountries={customCountries}
       />
 
-      <div className="p-6 bg-[#1e1e2b]/80 border border-slate-700 rounded-2xl backdrop-blur-sm shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div>
-            <h2 className="text-2xl font-bold text-slate-200 uppercase flex items-center gap-3">
-               {!seasonOver && <CalendarIcon className="w-6 h-6" />}
-               <span>{seasonOver ? t('seasonFinished') : t('nextRace')}</span>
-            </h2>
-            <p className="text-xl font-semibold text-white">
-                {seasonOver ? t('congratsChampions', { year: settings.startYear }) : currentRace?.name}
-            </p>
-           {currentRace && !seasonOver && (
-             <div className="flex items-center gap-2 text-slate-400 mt-1">
-               <CountryFlag countryCode={currentRace.countryCode} customCountries={customCountries} className="w-5 h-auto rounded-sm" />
-               <span>{t('raceInfo', { round: currentRaceIndex + 1, total: calendar.length, country: currentRace.country })}</span>
-             </div>
-           )}
+      <div className="flex-shrink-0 glass p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl carbon-pattern border-l-4 border-l-red-600">
+        <div className="flex items-center gap-6">
+            {!seasonOver && currentRace && (
+                <div className="relative">
+                    <CountryFlag countryCode={currentRace.countryCode} customCountries={customCountries} className="w-16 h-12 rounded-lg object-cover shadow-xl" />
+                    <div className="absolute -bottom-2 -right-2 bg-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded italic">R{currentRaceIndex + 1}</div>
+                </div>
+            )}
+            <div>
+                <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-1 leading-none">
+                   {seasonOver ? 'Championship Review' : 'Up Next'}
+                </h2>
+                <p className="text-2xl font-black text-white italic uppercase font-racing tracking-tight">
+                    {seasonOver ? t('congratsChampions', { year: settings.startYear }) : currentRace?.name}
+                </p>
+                {!seasonOver && currentRace && (
+                     <p className="text-[10px] font-black text-slate-400 mt-1 uppercase tracking-widest bg-white/5 inline-block px-2 py-0.5 rounded">
+                        {currentRace.country} • {currentRace.laps} Laps • {currentRace.baseLapTime} Base
+                     </p>
+                )}
+            </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="flex items-center gap-4">
             {['qualifying', 'race'].includes(simulationStatus) && !isSeasonSimRunning && (
               <SpeedControl currentSpeed={simulationSpeed} onSpeedChange={onSetSimulationSpeed} isPaused={isPaused} onPauseToggle={onPauseToggle} />
             )}
             {['idle', 'finished'].includes(simulationStatus) && !podiumData && !championData && (
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
-                    <button onClick={onBackToMenu} className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-slate-600/50 text-slate-200 font-bold uppercase rounded-lg shadow-md hover:bg-slate-500/50 transition-colors duration-300">
-                        <HomeIcon className="w-5 h-5" /><span>{t('backToMenu')}</span>
-                    </button>
+                <div className="flex items-center gap-3">
                     {!seasonOver && (
-                      <div className="w-full flex flex-col sm:flex-row gap-4">
-                        <button onClick={onSaveSimulation} className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-blue-600/80 text-white font-bold uppercase rounded-lg shadow-md hover:bg-blue-600 transition-colors duration-300">
-                            <FloppyDiskIcon className="w-5 h-5" /><span>{t('save')}</span>
+                      <>
+                        <button onClick={onSaveSimulation} className="p-3 glass hover:bg-blue-600/20 text-blue-400 rounded-xl transition-all" title={t('save')}>
+                            <FloppyDiskIcon className="w-5 h-5" />
                         </button>
-                        <div className="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <button onClick={onSimulateQualifying} disabled={isLoading} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#e00601] text-white font-bold uppercase rounded-lg shadow-md hover:bg-opacity-90 disabled:bg-slate-500/50 disabled:cursor-not-allowed transition-all duration-300">
-                                <StopwatchIcon className="w-5 h-5" /><span>{t('simulateQualifying')}</span>
+                        
+                        <div className="h-10 w-px bg-white/10 mx-2"></div>
+
+                        <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5">
+                            <button 
+                                onClick={onSimulateQualifying} 
+                                disabled={isLoading} 
+                                className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white font-black text-xs uppercase rounded-lg hover:bg-red-500 disabled:bg-slate-800 disabled:text-slate-600 transition-all font-racing"
+                            >
+                                <StopwatchIcon className="w-4 h-4" /><span>{t('simulateQualifying')}</span>
                             </button>
-                             <div className="grid grid-cols-2 gap-2">
-                                <button onClick={onSimulateWeekend} disabled={isLoading} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-700 text-white font-bold uppercase rounded-lg shadow-md hover:bg-slate-600 disabled:bg-slate-500/50 disabled:cursor-not-allowed transition-all duration-300">
-                                    <PlayIcon className="w-5 h-5" /><span>{t('simulateRaceWeek')}</span>
-                                </button>
-                                <button onClick={onSimulateSeason} disabled={isLoading} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-700 text-white font-bold uppercase rounded-lg shadow-md hover:bg-slate-600 disabled:bg-slate-500/50 disabled:cursor-not-allowed transition-all duration-300">
-                                    <ForwardIcon className="w-5 h-5" /><span>{t('simulateSeason')}</span>
-                                </button>
-                            </div>
+                            <div className="w-px h-6 bg-white/10 mx-1.5 self-center"></div>
+                            <button onClick={onSimulateWeekend} disabled={isLoading} className="p-2 text-slate-400 hover:text-white transition-all" title={t('simulateRaceWeek')}>
+                                <PlayIcon className="w-5 h-5" />
+                            </button>
+                            <button onClick={onSimulateSeason} disabled={isLoading} className="p-2 text-slate-400 hover:text-white transition-all" title={t('simulateSeason')}>
+                                <ForwardIcon className="w-5 h-5" />
+                            </button>
                         </div>
-                      </div>
+                      </>
                     )}
+                    <button onClick={onBackToMenu} className="p-3 glass hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all" title={t('backToMenu')}>
+                        <HomeIcon className="w-5 h-5" />
+                    </button>
                 </div>
             )}
         </div>
       </div>
        
        {isSeasonSimRunning && (
-        <div className="p-4 bg-slate-900/80 border border-slate-700 text-slate-200 rounded-lg flex items-center justify-between animate-fade-in">
-          <div className="flex items-center gap-3">
-            <SpinnerIcon />
-            <span className="font-bold">{t('simulatingSeason_progress', { round: currentRaceIndex + 1, total: calendar.length, raceName: currentRace?.name })}</span>
+        <div className="p-4 glass border-l-4 border-l-[#00ff85] flex items-center justify-between animate-fade-in rounded-xl flex-shrink-0">
+          <div className="flex items-center gap-4">
+            <SpinnerIcon className="w-5 h-5 text-[#00ff85]" />
+            <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Season Simulation Active</p>
+                <p className="text-sm font-black text-white italic uppercase font-racing">{currentRace?.name}</p>
+            </div>
           </div>
-          <button onClick={onStopSeasonSim} className="px-4 py-2 bg-red-600 text-white font-bold text-sm uppercase rounded-lg shadow-md hover:bg-red-500 transition-colors">{t('stop')}</button>
+          <button onClick={onStopSeasonSim} className="px-4 py-2 bg-red-600/10 text-red-500 font-black text-[10px] uppercase rounded-lg hover:bg-red-600 hover:text-white transition-all tracking-widest">{t('stop')}</button>
         </div>
        )}
 
        {error && (
-        <div className="p-4 bg-[#e00601]/20 border border-[#e00601]/50 text-red-200 rounded-lg">
-          <p><span className="font-bold">{t('error')}:</span> {error}</p>
+        <div className="p-4 bg-red-950/40 border border-red-900 text-red-400 rounded-xl flex-shrink-0 animate-fade-in flex items-center gap-3">
+          <ExclamationTriangleIcon className="w-5 h-5" />
+          <p className="text-sm font-bold uppercase tracking-tight">{error}</p>
         </div>
       )}
       
-      <div className={`transition-all duration-300 ease-in-out ${isFading ? 'opacity-0 transform -translate-y-4' : 'opacity-100'}`}>
+      <div className={`flex-1 min-h-0 transition-all duration-300 ease-in-out ${isFading ? 'opacity-0 transform -translate-y-4' : 'opacity-100'}`}>
         {renderContent()}
       </div>
 

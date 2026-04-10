@@ -24,7 +24,7 @@ export interface Driver {
     id: number;
     name: string;
     teamId: number;
-    // Novas habilidades (1-10)
+    // Skills (1-10)
     startSkill: number;
     concentration: number;
     overtaking: number;
@@ -33,7 +33,7 @@ export interface Driver {
     rainSkill: number;
     setupSkill: number;
     physical: number;
-    // Potencial (0.0 - 10.0)
+    // Potential (0.0 - 10.0)
     potential: number;
     age: number;
     nationality: string; // Country code e.g., 'GB'
@@ -45,6 +45,7 @@ export interface Driver {
 export interface Team {
     id: number;
     name: string;
+    nationality: string; // Team nationality code
     aerodynamics: number; // 50-100
     gearbox: number; // 50-100
     brakes: number; // 50-100
@@ -81,7 +82,6 @@ export interface Race {
 
 export interface ScoringSystem {
     id: number;
-    // FIX: Changed name from string to TranslationKey for type safety.
     name: TranslationKey;
     points: number[]; // e.g., [25, 18, 15, ...]
 }
@@ -107,7 +107,6 @@ export interface QualifyingData {
     q2: QualifyingResult[];
     q3: QualifyingResult[];
 }
-
 
 export interface RaceResult {
     driverId: number;

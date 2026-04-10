@@ -23,18 +23,18 @@ const StandingsTable: React.FC<StandingsTableProps> = ({ title, standings, type,
   const isDriver = type === 'driver';
 
   return (
-    <div className="bg-[#1e1e2b]/80 border border-slate-700 rounded-2xl backdrop-blur-sm shadow-lg p-6">
-      <h3 className="text-xl font-bold mb-4 text-slate-200">{title}</h3>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-slate-700">
-              <th className="p-3 text-sm font-semibold uppercase text-slate-400">{t('pos')}</th>
-              <th className="p-3 text-sm font-semibold uppercase text-slate-400">{isDriver ? t('driver') : t('team')}</th>
-              <th className="p-3 text-sm font-semibold uppercase text-slate-400 text-right">{t('points')}</th>
+    <div className="flex flex-col h-full w-full">
+      <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 p-4 border-b border-slate-700 bg-[#1e1e2b] sticky top-0 z-10">{title}</h3>
+      <div className="flex-1 overflow-auto">
+        <table className="w-full text-left border-collapse">
+          <thead className="bg-[#15141f] sticky top-0 z-10 text-xs font-semibold uppercase text-slate-500">
+            <tr>
+              <th className="p-2 w-10 text-center">#</th>
+              <th className="p-2">{isDriver ? t('driver') : t('team')}</th>
+              <th className="p-2 text-right">{t('points')}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="text-sm">
             {standings.map((standing, index) => {
               const pos = index + 1;
               let name: string = '';
@@ -71,41 +71,43 @@ const StandingsTable: React.FC<StandingsTableProps> = ({ title, standings, type,
               return (
                 <tr 
                   key={id} 
-                  className={`border-b border-slate-800 last:border-0 transition-colors duration-200 cursor-pointer hover:bg-slate-500/20 ${isChampion ? 'bg-[#00e051]/10' : ''}`}
+                  className={`border-b border-slate-800 last:border-0 transition-colors duration-200 cursor-pointer hover:bg-slate-700/30 ${isChampion ? 'bg-[#00e051]/5' : ''}`}
                   onClick={() => onRowClick(id, type)}
                 >
-                  <td className="p-3 font-bold w-12 text-center relative">
+                  <td className="p-2 text-center font-mono font-bold text-slate-400 relative">
                     {pos}
-                    {isChampion && <TrophyIcon className="absolute -left-2 top-1/2 -translate-y-1/2 w-5 h-5 text-[#00e051]" />}
+                    {isChampion && <TrophyIcon className="absolute -left-1 top-1/2 -translate-y-1/2 w-4 h-4 text-[#00e051]" />}
                   </td>
-                  <td className="p-3 flex items-center space-x-3" style={{ borderLeft: `4px solid ${teamPrimaryColor}` }}>
-                    <ImageWithFallback
-                      src={imageUrl}
-                      alt={name}
-                      primaryColor={teamPrimaryColor}
-                      accentColor={teamAccentColor}
-                      initials={getInitials(name)}
-                      // FIX: Map 'constructor' type to 'team' for ImageWithFallback component prop compatibility.
-                      type={type === 'constructor' ? 'team' : type}
-                      className={`h-10 w-10 ${isDriver ? 'rounded-full object-cover' : 'object-contain'}`}
-                    />
-                    <div>
-                      <div className="font-semibold flex items-center gap-2">
-                         {nationalityCode && (
-                          <CountryFlag 
-                            countryCode={nationalityCode}
-                            customCountries={customCountries}
-                            alt={getCountryByCode(nationalityCode)?.name} 
-                            title={getCountryByCode(nationalityCode)?.name}
-                            className="w-5 h-auto rounded-sm"
-                          />
-                        )}
-                        <span>{name}</span>
-                      </div>
-                      {teamName && <div className="text-xs text-slate-400">{teamName}</div>}
+                  <td className="p-2">
+                    <div className="flex items-center space-x-3">
+                        <div className="w-1 h-8 rounded-full" style={{ backgroundColor: teamPrimaryColor }}></div>
+                        <ImageWithFallback
+                        src={imageUrl}
+                        alt={name}
+                        primaryColor={teamPrimaryColor}
+                        accentColor={teamAccentColor}
+                        initials={getInitials(name)}
+                        type={type === 'constructor' ? 'team' : type}
+                        className={`h-8 w-8 flex-shrink-0 ${isDriver ? 'rounded-full object-cover' : 'object-contain'}`}
+                        />
+                        <div className="min-w-0">
+                        <div className="font-semibold text-slate-200 truncate flex items-center gap-2">
+                            {nationalityCode && (
+                            <CountryFlag 
+                                countryCode={nationalityCode}
+                                customCountries={customCountries}
+                                alt={getCountryByCode(nationalityCode)?.name} 
+                                title={getCountryByCode(nationalityCode)?.name}
+                                className="w-4 h-auto rounded-sm"
+                            />
+                            )}
+                            <span className="truncate">{name}</span>
+                        </div>
+                        {teamName && <div className="text-xs text-slate-500 truncate">{teamName}</div>}
+                        </div>
                     </div>
                   </td>
-                  <td className="p-3 font-bold text-lg text-right">{standing.points}</td>
+                  <td className="p-2 font-mono font-bold text-slate-200 text-right pr-4">{standing.points}</td>
                 </tr>
               );
             })}

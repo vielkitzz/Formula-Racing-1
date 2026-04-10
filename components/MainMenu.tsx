@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useI18n } from '../i18n';
 import PlayIcon from './icons/PlayIcon';
@@ -19,107 +20,88 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStart, onEdit, onLoad, onContinue
   const { t } = useI18n();
 
   return (
-    <div className="flex flex-col items-center justify-center p-4">
-      <div className="text-center mb-12 animate-fade-in">
-        <h1 className="text-5xl md:text-7xl font-black uppercase tracking-wider text-slate-100 mb-4">
-            Formula Racing 1
+    <div className="flex flex-col items-center justify-center h-full max-w-5xl mx-auto px-6 overflow-hidden py-4">
+      <div className="text-center mb-8 animate-fade-in flex-shrink-0">
+        <div className="inline-block px-3 py-0.5 mb-2 text-[9px] font-black uppercase tracking-[0.3em] bg-red-600 text-white rounded-sm">Season Simulator</div>
+        <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter text-white mb-2 italic font-racing leading-none">
+            Formula<span className="text-red-600">Racing</span>
         </h1>
-        <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+        <p className="text-slate-500 text-sm max-w-lg mx-auto font-medium leading-relaxed">
             {t('mainMenu_description')}
         </p>
       </div>
       
-      <div className="w-full max-w-4xl space-y-8">
+      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 content-center flex-1 min-h-0 max-h-[500px]">
         {hasSaves && (
-            <div className="animate-fade-in" style={{ animationDelay: '150ms' }}>
-                 <button
-                    onClick={onContinue}
-                    className="group w-full p-6 bg-gradient-to-br from-[#00e051]/80 to-[#00a031]/80 border border-[#00e051] rounded-2xl backdrop-blur-sm shadow-lg hover:border-green-300 transition-all duration-300 transform hover:-translate-y-1"
-                >
-                    <div className="flex flex-col md:flex-row items-center text-center md:text-left gap-6">
-                        <div className="p-3 bg-white/20 rounded-full">
-                            <ForwardIcon className="w-8 h-8 text-white" />
-                        </div>
-                        <div>
-                            <h3 className="text-2xl font-bold uppercase text-white mb-1">{t('mainMenu_continueTitle')}</h3>
-                            <p className="text-green-100">
-                            {t('mainMenu_continueDescription')}
-                            </p>
-                        </div>
-                    </div>
-                </button>
-            </div>
+            <button
+                onClick={onContinue}
+                className="group relative glass overflow-hidden rounded-xl transition-all duration-300 hover:scale-[1.02] border-l-4 border-l-[#00ff85] flex items-center p-4 gap-4 h-full"
+            >
+                <div className="p-3 bg-[#00ff85]/10 rounded-lg group-hover:bg-[#00ff85]/20 transition-colors">
+                    <ForwardIcon className="w-6 h-6 text-[#00ff85]" />
+                </div>
+                <div className="text-left flex-grow">
+                    <h3 className="text-lg font-black uppercase text-white font-racing tracking-tight">{t('mainMenu_continueTitle')}</h3>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-tighter">{t('mainMenu_continueDescription')}</p>
+                </div>
+            </button>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
-             <div className="animate-fade-in" style={{ animationDelay: '300ms' }}>
-                <button
-                    onClick={onStartOwnerMode}
-                    className="group h-full w-full p-8 bg-[#1e1e2b]/80 border border-slate-700 rounded-2xl backdrop-blur-sm shadow-lg hover:border-[#e00601] transition-all duration-300 transform hover:-translate-y-1"
-                >
-                    <div className="flex flex-col items-center text-center">
-                        <div className="p-4 bg-slate-600 group-hover:bg-[#e00601] transition-colors rounded-full mb-4">
-                            <UserIcon className="w-10 h-10 text-white" />
-                        </div>
-                        <h3 className="text-2xl font-bold uppercase text-slate-200 mb-2">{t('teamOwner')}</h3>
-                        <p className="text-slate-400">
-                        {t('teamOwner_description')}
-                        </p>
-                    </div>
-                </button>
+        <button
+            onClick={onStartOwnerMode}
+            className="group relative glass overflow-hidden rounded-xl transition-all duration-300 hover:scale-[1.02] border-l-4 border-l-red-600 flex items-center p-4 gap-4 h-full"
+        >
+            <div className="p-3 bg-red-600/10 rounded-lg group-hover:bg-red-600 transition-colors">
+                <UserIcon className="w-6 h-6 text-red-500 group-hover:text-white" />
             </div>
-             <div className="animate-fade-in" style={{ animationDelay: '450ms' }}>
-                <button
-                    onClick={onStart}
-                    className="group h-full w-full p-8 bg-[#1e1e2b]/80 border border-slate-700 rounded-2xl backdrop-blur-sm shadow-lg hover:border-[#00e051] transition-all duration-300 transform hover:-translate-y-1"
-                >
-                    <div className="flex flex-col items-center text-center">
-                        <div className="p-4 bg-slate-600 group-hover:bg-[#00e051] transition-colors rounded-full mb-4">
-                            <PlayIcon className="w-10 h-10 text-white" />
-                        </div>
-                        <h3 className="text-2xl font-bold uppercase text-slate-200 mb-2">{t('mainMenu_startTitle')}</h3>
-                        <p className="text-slate-400">
-                        {t('mainMenu_startDescription')}
-                        </p>
-                    </div>
-                </button>
+            <div className="text-left flex-grow">
+                <h3 className="text-lg font-black uppercase text-white font-racing tracking-tight">{t('teamOwner')}</h3>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-tighter">{t('teamOwner_description').substring(0, 45)}...</p>
             </div>
-        </div>
+        </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
-            <div className="animate-fade-in" style={{ animationDelay: '600ms' }}>
-                <button
-                    onClick={onLoad}
-                    className="group h-full w-full p-6 bg-[#1e1e2b]/80 border border-slate-700 rounded-2xl backdrop-blur-sm shadow-lg hover:border-[#3b82f6] transition-all duration-300 transform hover:-translate-y-1"
-                >
-                    <div className="flex flex-col items-center text-center">
-                        <div className="p-3 bg-slate-600 group-hover:bg-[#3b82f6] transition-colors rounded-full mb-3">
-                            <FolderIcon className="w-8 h-8 text-white" />
-                        </div>
-                        <h3 className="text-xl font-bold uppercase text-slate-200 mb-1">{t('mainMenu_loadTitle')}</h3>
-                        <p className="text-sm text-slate-400">
-                        {t('mainMenu_loadDescription')}
-                        </p>
-                    </div>
-                </button>
+        <button
+            onClick={onStart}
+            className="group relative glass overflow-hidden rounded-xl transition-all duration-300 hover:scale-[1.02] border-l-4 border-l-white flex items-center p-4 gap-4 h-full"
+        >
+            <div className="p-3 bg-white/10 rounded-lg group-hover:bg-white transition-colors">
+                <PlayIcon className="w-6 h-6 text-white group-hover:text-black" />
             </div>
-            <div className="animate-fade-in" style={{ animationDelay: '750ms' }}>
-                <button
-                    onClick={onEdit}
-                    className="group h-full w-full p-6 bg-[#1e1e2b]/80 border border-slate-700 rounded-2xl backdrop-blur-sm shadow-lg hover:border-[#a855f7] transition-all duration-300 transform hover:-translate-y-1"
-                >
-                    <div className="flex flex-col items-center text-center">
-                        <div className="p-3 bg-slate-600 group-hover:bg-[#a855f7] transition-colors rounded-full mb-3">
-                            <PencilIcon className="w-8 h-8 text-white" />
-                        </div>
-                        <h3 className="text-xl font-bold uppercase text-slate-200 mb-1">{t('mainMenu_editTitle')}</h3>
-                        <p className="text-sm text-slate-400">
-                        {t('mainMenu_editDescription')}
-                        </p>
-                    </div>
-                </button>
+            <div className="text-left flex-grow">
+                <h3 className="text-lg font-black uppercase text-white font-racing tracking-tight">{t('mainMenu_startTitle')}</h3>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-tighter">{t('mainMenu_startDescription')}</p>
             </div>
-        </div>
+        </button>
+
+        <button 
+            onClick={onLoad} 
+            className="group glass rounded-xl transition-all duration-300 hover:scale-[1.02] flex items-center p-4 gap-4 border-l-4 border-l-blue-600 h-full"
+        >
+            <div className="p-3 bg-blue-600/10 rounded-lg group-hover:bg-blue-600 transition-colors">
+                <FolderIcon className="w-6 h-6 text-blue-500 group-hover:text-white" />
+            </div>
+            <div className="text-left flex-grow">
+                <h4 className="text-lg font-black uppercase text-white font-racing tracking-tight">{t('mainMenu_loadTitle')}</h4>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-tighter">Carregar arquivo .json do seu computador</p>
+            </div>
+        </button>
+
+        <button 
+            onClick={onEdit} 
+            className="group glass rounded-xl transition-all duration-300 hover:scale-[1.02] flex items-center p-4 gap-4 border-l-4 border-l-purple-600 h-full"
+        >
+            <div className="p-3 bg-purple-600/10 rounded-lg group-hover:bg-purple-600 transition-colors">
+                <PencilIcon className="w-6 h-6 text-purple-500 group-hover:text-white" />
+            </div>
+            <div className="text-left flex-grow">
+                <h4 className="text-lg font-black uppercase text-white font-racing tracking-tight">{t('mainMenu_editTitle')}</h4>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-tighter">{t('mainMenu_editDescription')}</p>
+            </div>
+        </button>
+      </div>
+
+      <div className="mt-8 text-[9px] font-black uppercase tracking-[0.4em] text-slate-700 animate-fade-in stagger-3">
+        Engine V3.2 • 2024 Stable
       </div>
     </div>
   );

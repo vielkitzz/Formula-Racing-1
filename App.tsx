@@ -224,6 +224,8 @@ const App: React.FC = () => {
                 const newChassisParts = (team.gearbox + team.brakes + team.steering) / 3;
                 const newChassis = Math.min(100, newChassisParts + (100 - newChassisParts) * improvementFactor * (chassis/20));
                 const newReliability = Math.min(100, team.reliability + (100 - team.reliability) * improvementFactor * (reliability/20));
+                // Powertrain facility evolution impacts electricalSystem
+                const newElectricalSystem = Math.min(100, team.electricalSystem + (100 - team.electricalSystem) * improvementFactor * (powertrain/20));
 
                 return {
                     ...team,
@@ -232,6 +234,7 @@ const App: React.FC = () => {
                     brakes: parseFloat(newChassis.toFixed(1)),
                     steering: parseFloat(newChassis.toFixed(1)),
                     reliability: parseFloat(newReliability.toFixed(1)),
+                    electricalSystem: parseFloat(newElectricalSystem.toFixed(1)),
                 };
             });
             setTeams(updatedTeams);
@@ -396,7 +399,10 @@ const App: React.FC = () => {
     const handleStartRace = useCallback((strategies: { driverId: number; startingTyre: TyreCompound; }[], startingWeather: WeatherCondition) => {
         if (!qualifyingResults || !calendar[currentRaceIndex]) return;
         
-        const initialDriversState: LiveDriverState[] = qualifyingResults.map((q, index) => {
+        // Filter out DNQ drivers (107% rule) - they cannot participate in the race
+        const eligibleDrivers = qualifyingResults.filter(q => q.status !== 'DNQ');
+        
+        const initialDriversState: LiveDriverState[] = eligibleDrivers.map((q, index) => {
             const strategy = strategies.find(s => s.driverId === q.driverId);
             const startingTyre = strategy ? strategy.startingTyre : TyreCompound.Medium;
 
@@ -503,6 +509,29 @@ const App: React.FC = () => {
         const articles = generateRaceNews(raceResultsWithPoints, drivers, teams, calendar[currentRaceIndex], currentRaceIndex, settings.startYear, newDriverStandings, language);
         setNews(prev => [...prev, ...articles]);
         
+        // Autosave after each race
+        const raceName = calendar[currentRaceIndex] ? calendar[currentRaceIndex].name : t('seasonFinale');
+        const saveData: SaveData = {
+            id: `${settings.startYear}-${currentRaceIndex}-${new Date().getTime()}`,
+            name: `FR1_Season_${settings.startYear}_Race_${currentRaceIndex + 1}.json`,
+            savedAt: new Date().toISOString(),
+            settings,
+            currentRaceIndex: currentRaceIndex + 1,
+            allRaceResults: [...allRaceResults, raceResultsWithPoints],
+            allQualifyingResults,
+            driverStandings: newDriverStandings,
+            constructorStandings: newConstructorStandings,
+            drivers,
+            teams,
+            calendar,
+            engineSuppliers,
+            news: [...news, ...articles],
+            skin,
+            customCountries,
+        };
+        saveSimulation(saveData);
+        setHasSaves(true);
+        
         setCurrentRaceIndex(prev => prev + 1);
         setSimulationStatus('finished');
         setDeterminedWeather(null);
@@ -568,14 +597,44 @@ const App: React.FC = () => {
                     }
                     const baseTime = parseTimeToSeconds(currentRace.baseLapTime);
                     let lapTime = baseTime + (Math.random() - 0.5) * 2;
+                    let newIncident = ds.activeIncident;
+                    
+                    // Handle active incidents - they may clear or cause DNF
+                    if (ds.activeIncident) {
+                        const clearChance = 0.3; // 30% chance to clear per lap
+                        if (Math.random() < clearChance) {
+                            newIncident = null;
+                            if (!newComment) {
+                            newComment = getIncidentClearedCommentary(driver.name, language);
+                            }
+                        } else {
+                            // Incident adds time penalty
+                            lapTime += ds.activeIncident === 'FrontWingDamage' ? 1.5 : 0.8;
+                            // Small chance incident escalates to DNF
+                            if (Math.random() < 0.05) {
+                                return {...ds, status: 'DNF' as 'DNF', lastLapTime: 0, dnfReason: ds.activeIncident === 'FrontWingDamage' ? 'Dano na asa dianteira' : 'Falha eletrônica', activeIncident: null };
+                            }
+                        }
+                    } else {
+                        // Random chance for new incident (lower than DNF, but adds drama)
+                        const incidentChance = (100 - team.reliability) * 0.00015;
+                        if (Math.random() < incidentChance) {
+                            const incidentType = Math.random() < 0.5 ? IncidentType.FrontWingDamage : IncidentType.ElectronicGlitch;
+                            newIncident = incidentType;
+                            if (!newComment) {
+                                newComment = getIncidentCommentary(driver.name, incidentType, language);
+                            }
+                        }
+                    }
+                    
                     const newTotalTime = ds.totalTime + lapTime;
                     const tyreInfo = TYRE_COMPOUNDS[ds.currentTyres.compound];
                     const newWear = ds.currentTyres.wear + tyreInfo.degradation * 100 / currentRace.laps;
                     const dnfChance = (100 - team.reliability) * 0.0001;
                     if (Math.random() < dnfChance) {
-                        return {...ds, status: 'DNF' as 'DNF', lastLapTime: 0, dnfReason: getRandomDnfReason(language) };
+                        return {...ds, status: 'DNF' as 'DNF', lastLapTime: 0, dnfReason: getRandomDnfReason(language), activeIncident: null };
                     }
-                    return { ...ds, totalTime: newTotalTime, lastLapTime: lapTime, bestLapTime: Math.min(ds.bestLapTime, lapTime), currentTyres: { ...ds.currentTyres, wear: newWear, age: ds.currentTyres.age + 1 }, status: 'RACING' as 'RACING' };
+                    return { ...ds, totalTime: newTotalTime, lastLapTime: lapTime, bestLapTime: Math.min(ds.bestLapTime, lapTime), currentTyres: { ...ds.currentTyres, wear: newWear, age: ds.currentTyres.age + 1 }, status: 'RACING' as 'RACING', activeIncident: newIncident };
                 });
                 
                 let racingDrivers = intermediateDriverStates.filter(d => d.status !== 'DNF').sort((a, b) => a.totalTime - b.totalTime);

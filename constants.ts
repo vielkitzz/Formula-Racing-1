@@ -158,8 +158,8 @@ export const TYRE_COMPOUNDS: Record<TyreCompound, { performance: number; degrada
     [TyreCompound.Soft]: { performance: 0.985, degradation: 0.045, ideal: 'Dry', penalty: 15, lifespan: 0.30 },
     [TyreCompound.Medium]: { performance: 1.0, degradation: 0.03, ideal: 'Dry', penalty: 15, lifespan: 0.50 },
     [TyreCompound.Hard]: { performance: 1.015, degradation: 0.02, ideal: 'Dry', penalty: 15, lifespan: 0.70 },
-    [TyreCompound.Intermediate]: { performance: 1.05, degradation: 0.035, ideal: 'LightRain', penalty: 5 },
-    [TyreCompound.Wet]: { performance: 1.10, degradation: 0.04, ideal: 'HeavyRain', penalty: 8 },
+    [TyreCompound.Intermediate]: { performance: 1.05, degradation: 0.035, ideal: 'LightRain', penalty: 5, lifespan: 0.60 },
+    [TyreCompound.Wet]: { performance: 1.10, degradation: 0.04, ideal: 'HeavyRain', penalty: 8, lifespan: 0.50 },
 };
 
 export const DEFAULT_SKINS: AppSkin[] = [

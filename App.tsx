@@ -502,11 +502,46 @@ const App: React.FC = () => {
 
         const articles = generateRaceNews(raceResultsWithPoints, drivers, teams, calendar[currentRaceIndex], currentRaceIndex, settings.startYear, newDriverStandings, language);
         setNews(prev => [...prev, ...articles]);
-        
+
+        const computeUpdatedTeams = () => {
+            if (settings.mode !== 'owner') return teams;
+            return teams.map(t => {
+                const teamCopy = { ...t };
+                raceResultsWithPoints.forEach(result => {
+                    const driver = drivers.find(d => d.id === result.driverId);
+                    if (driver && driver.teamId === teamCopy.id && result.position > 0) {
+                        teamCopy.budget += PRIZE_MONEY[result.position - 1] || 0;
+                    }
+                });
+                return teamCopy;
+            });
+        };
+
+        const updatedTeamsForSave = computeUpdatedTeams();
+        const updatedSaveData: SaveData = {
+            id: `${settings.startYear}-${currentRaceIndex + 1}-${new Date().getTime()}`,
+            name: `FR1_Season_${settings.startYear}_Race_${currentRaceIndex + 1}_Autosave.json`,
+            savedAt: new Date().toISOString(),
+            settings,
+            currentRaceIndex: currentRaceIndex + 1,
+            allRaceResults: [...allRaceResults, raceResultsWithPoints],
+            allQualifyingResults,
+            driverStandings: newDriverStandings,
+            constructorStandings: newConstructorStandings,
+            drivers,
+            teams: updatedTeamsForSave,
+            calendar,
+            engineSuppliers,
+            news: [...news, ...articles],
+            skin,
+            customCountries,
+        };
+
+        saveSimulation(updatedSaveData);
         setCurrentRaceIndex(prev => prev + 1);
         setSimulationStatus('finished');
         setDeterminedWeather(null);
-    }, [settings, drivers, teams, calendar, currentRaceIndex, driverStandings, constructorStandings, t, language]);
+    }, [settings, drivers, teams, calendar, currentRaceIndex, driverStandings, constructorStandings, allRaceResults, allQualifyingResults, news, skin, customCountries, t, language]);
 
     const handlePauseToggle = useCallback(() => {
         setIsPaused(prev => !prev);
